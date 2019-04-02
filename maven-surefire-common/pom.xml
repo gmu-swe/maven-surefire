@@ -44,6 +44,11 @@
         </dependency>
         <dependency>
             <groupId>org.apache.maven.surefire</groupId>
+            <artifactId>surefire-extensions-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven.surefire</groupId>
             <artifactId>surefire-booter</artifactId>
             <version>${project.version}</version>
         </dependency>

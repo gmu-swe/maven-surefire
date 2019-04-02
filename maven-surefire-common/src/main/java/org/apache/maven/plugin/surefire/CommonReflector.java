@@ -19,15 +19,17 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import java.io.File;
-import java.lang.reflect.Constructor;
-
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.surefire.booter.SurefireReflector;
+import org.apache.maven.surefire.extensions.ConsoleOutputReporter;
+import org.apache.maven.surefire.extensions.StatelessReporter;
+import org.apache.maven.surefire.extensions.StatelessTestsetInfoReporter;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
 import javax.annotation.Nonnull;
+import java.io.File;
+import java.lang.reflect.Constructor;
 
 import static org.apache.maven.surefire.util.ReflectionUtils.getConstructor;
 import static org.apache.maven.surefire.util.ReflectionUtils.instantiateObject;
@@ -40,6 +42,9 @@ public class CommonReflector
 {
     private final Class<?> startupReportConfiguration;
     private final Class<?> consoleLogger;
+    private final Class<?> statelessReporter;
+    private final Class<?> consoleOutputReporter;
+    private final Class<?> statelessTestsetInfoReporter;
     private final ClassLoader surefireClassLoader;
 
     public CommonReflector( @Nonnull ClassLoader surefireClassLoader )
@@ -50,6 +55,10 @@ public class CommonReflector
         {
             startupReportConfiguration = surefireClassLoader.loadClass( StartupReportConfiguration.class.getName() );
             consoleLogger = surefireClassLoader.loadClass( ConsoleLogger.class.getName() );
+            statelessReporter = surefireClassLoader.loadClass( StatelessReporter.class.getName() );
+            consoleOutputReporter = surefireClassLoader.loadClass( ConsoleOutputReporter.class.getName() );
+            statelessTestsetInfoReporter =
+                    surefireClassLoader.loadClass( StatelessTestsetInfoReporter.class.getName() );
         }
         catch ( ClassNotFoundException e )
         {
@@ -70,18 +79,23 @@ public class CommonReflector
     private Object createStartupReportConfiguration( @Nonnull StartupReportConfiguration reporterConfiguration )
     {
         Constructor<?> constructor = getConstructor( startupReportConfiguration, boolean.class, boolean.class,
-                                                           String.class, boolean.class, boolean.class, File.class,
-                                                           boolean.class, String.class, File.class, boolean.class,
-                                                           int.class, String.class, String.class, boolean.class );
+                                                     String.class, boolean.class, File.class,
+                                                     boolean.class, String.class, File.class, boolean.class,
+                                                     int.class, String.class, String.class, boolean.class,
+                                                     statelessReporter, consoleOutputReporter,
+                                                     statelessTestsetInfoReporter );
         //noinspection BooleanConstructorCall
         Object[] params = { reporterConfiguration.isUseFile(), reporterConfiguration.isPrintSummary(),
             reporterConfiguration.getReportFormat(), reporterConfiguration.isRedirectTestOutputToFile(),
-            reporterConfiguration.isDisableXmlReport(), reporterConfiguration.getReportsDirectory(),
+            reporterConfiguration.getReportsDirectory(),
             reporterConfiguration.isTrimStackTrace(), reporterConfiguration.getReportNameSuffix(),
             reporterConfiguration.getStatisticsFile(), reporterConfiguration.isRequiresRunHistory(),
             reporterConfiguration.getRerunFailingTestsCount(), reporterConfiguration.getXsdSchemaLocation(),
-            reporterConfiguration.getEncoding().name(), reporterConfiguration.isForkMode() };
+            reporterConfiguration.getEncoding().name(), reporterConfiguration.isForkMode(),
+            reporterConfiguration.getXmlReporter().clone( surefireClassLoader ),
+            reporterConfiguration.getConsoleOutputReporter().clone( surefireClassLoader ),
+            reporterConfiguration.getTestsetReporter().clone( surefireClassLoader )
+        };
         return newInstance( constructor, params );
     }
-
 }
