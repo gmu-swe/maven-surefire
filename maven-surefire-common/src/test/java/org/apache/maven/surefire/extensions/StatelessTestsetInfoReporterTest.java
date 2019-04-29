@@ -32,6 +32,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
@@ -54,6 +55,7 @@ import static org.powermock.reflect.Whitebox.getInternalState;
  * tests for {@link DefaultStatelessTestsetInfoReporter} and {@link JUnit5StatelessTestsetInfoReporter}.
  */
 @RunWith( PowerMockRunner.class )
+@PowerMockIgnore( { "org.jacoco.agent.rt.*", "com.vladium.emma.rt.*" } )
 public class StatelessTestsetInfoReporterTest
 {
     @Mock

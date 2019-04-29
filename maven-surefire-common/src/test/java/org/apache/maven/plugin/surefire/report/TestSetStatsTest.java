@@ -23,6 +23,7 @@ import org.apache.maven.surefire.report.ReportEntry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.apache.maven.shared.utils.logging.MessageUtils.buffer;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.when;
  * tests for {@link TestSetStats}.
  */
 @RunWith( PowerMockRunner.class )
+@PowerMockIgnore( { "org.jacoco.agent.rt.*", "com.vladium.emma.rt.*" } )
 public class TestSetStatsTest
 {
     @Mock

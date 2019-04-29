@@ -50,6 +50,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -90,6 +91,7 @@ import static org.powermock.reflect.Whitebox.invokeMethod;
  */
 @RunWith( PowerMockRunner.class )
 @PrepareForTest( AbstractSurefireMojo.class )
+@PowerMockIgnore( { "org.jacoco.agent.rt.*", "com.vladium.emma.rt.*" } )
 public class AbstractSurefireMojoTest
 {
     @Mock
@@ -1576,7 +1578,7 @@ public class AbstractSurefireMojoTest
     }
 
     public static class Mojo
-            extends AbstractSurefireMojo
+            extends AbstractSurefireMojo implements SurefireReportParameters
     {
         private JUnitPlatformProviderInfo createJUnitPlatformProviderInfo( Artifact providerArtifact,
                                                                            TestClassPath testClasspathWrapper )
@@ -1634,6 +1636,18 @@ public class AbstractSurefireMojoTest
 
         @Override
         public void setSkip( boolean skip )
+        {
+
+        }
+
+        @Override
+        public boolean isTestFailureIgnore()
+        {
+            return false;
+        }
+
+        @Override
+        public void setTestFailureIgnore( boolean testFailureIgnore )
         {
 
         }

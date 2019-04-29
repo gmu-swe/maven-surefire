@@ -27,6 +27,7 @@ import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.surefire.suite.RunResult;
 import org.apache.maven.surefire.util.DefaultScanResult;
+import org.apache.maven.toolchain.Toolchain;
 import org.junit.Test;
 
 import java.io.File;
@@ -38,9 +39,76 @@ import java.util.zip.ZipOutputStream;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.fail;
+import static org.powermock.reflect.Whitebox.setInternalState;
 
 public class MojoMocklessTest
 {
+    @Test
+    public void testForkMode()
+    {
+        AbstractSurefireMojo surefirePlugin = new Mojo( null, null );
+        setInternalState( surefirePlugin, "toolchain", new MyToolChain() );
+        setInternalState( surefirePlugin, "forkMode", "never" );
+        assertThat( surefirePlugin.getEffectiveForkMode() )
+                .isEqualTo( "once" );
+    }
+
+    @Test
+    public void testForkCountComputation()
+    {
+        AbstractSurefireMojo surefirePlugin = new Mojo( null, null );
+        assertConversionFails( surefirePlugin, "nothing" );
+
+        assertConversionFails( surefirePlugin, "5,0" );
+        assertConversionFails( surefirePlugin, "5.0" );
+        assertConversionFails( surefirePlugin, "5,0C" );
+        assertConversionFails( surefirePlugin, "5.0CC" );
+
+        assertForkCount( surefirePlugin, 5, "5" );
+
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        assertForkCount( surefirePlugin, 3 * availableProcessors, "3C" );
+        assertForkCount( surefirePlugin, (int) ( 2.5 * availableProcessors ), "2.5C" );
+        assertForkCount( surefirePlugin, availableProcessors, "1.0001 C" );
+        assertForkCount( surefirePlugin, 1, 1d / ( (double) availableProcessors + 1 ) + "C" );
+        assertForkCount( surefirePlugin, 0, "0 C" );
+    }
+
+    private static void assertForkCount( AbstractSurefireMojo surefirePlugin, int expected, String value )
+    {
+        assertThat( surefirePlugin.convertWithCoreCount( value ) )
+                .isEqualTo( expected );
+    }
+
+    private static void assertConversionFails( AbstractSurefireMojo surefirePlugin, String value )
+    {
+        try
+        {
+            surefirePlugin.convertWithCoreCount( value );
+        }
+        catch ( NumberFormatException e )
+        {
+            return;
+        }
+        fail( "Expected NumberFormatException when converting " + value );
+    }
+
+    private static class MyToolChain implements Toolchain
+    {
+        @Override
+        public String getType()
+        {
+            return null;
+        }
+
+        @Override
+        public String findTool( String s )
+        {
+            return null;
+        }
+    }
+
     @Test
     public void scanDependenciesShouldReturnNull()
             throws MojoFailureException

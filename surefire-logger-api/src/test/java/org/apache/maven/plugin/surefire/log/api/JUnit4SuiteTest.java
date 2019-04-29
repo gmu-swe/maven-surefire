@@ -1,4 +1,4 @@
-package org.apache.maven.surefire.common.junit48;
+package org.apache.maven.plugin.surefire.log.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -22,22 +22,22 @@ package org.apache.maven.surefire.common.junit48;
 import junit.framework.JUnit4TestAdapter;
 import junit.framework.Test;
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
 
 /**
  * Adapt the JUnit4 tests which use only annotations to the JUnit3 test suite.
  *
  * @author Tibor Digana (tibor17)
- * @since 2.19
+ * @since 3.0.0-M4
  */
+@SuiteClasses( { ConsoleLoggerUtilsTest.class, LevelTest.class, LoggersTest.class } )
+@RunWith( Suite.class )
 public class JUnit4SuiteTest extends TestCase
 {
     public static Test suite()
     {
-        TestSuite suite = new TestSuite();
-        suite.addTestSuite( JUnit48ReflectorTest.class );
-        suite.addTest( new JUnit4TestAdapter( JUnit48TestCheckerTest.class ) );
-        suite.addTest( new JUnit4TestAdapter( FilterFactoryTest.class ) );
-        return suite;
+        return new JUnit4TestAdapter( JUnit4SuiteTest.class );
     }
 }

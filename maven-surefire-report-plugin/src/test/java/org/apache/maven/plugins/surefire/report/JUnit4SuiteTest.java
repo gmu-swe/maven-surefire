@@ -1,4 +1,4 @@
-package org.apache.maven.surefire.common.junit48;
+package org.apache.maven.plugins.surefire.report;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -28,16 +28,17 @@ import junit.framework.TestSuite;
  * Adapt the JUnit4 tests which use only annotations to the JUnit3 test suite.
  *
  * @author Tibor Digana (tibor17)
- * @since 2.19
+ * @since 3.0.0-M4
  */
 public class JUnit4SuiteTest extends TestCase
 {
     public static Test suite()
     {
         TestSuite suite = new TestSuite();
-        suite.addTestSuite( JUnit48ReflectorTest.class );
-        suite.addTest( new JUnit4TestAdapter( JUnit48TestCheckerTest.class ) );
-        suite.addTest( new JUnit4TestAdapter( FilterFactoryTest.class ) );
+        suite.addTest( new JUnit4TestAdapter( Surefire597Test.class ) );
+        suite.addTest( new JUnit4TestAdapter( SurefireSchemaValidationTest.class ) );
+        suite.addTestSuite( Surefire1183Test.class );
+        suite.addTestSuite(  SurefireReportMojoTest.class);
         return suite;
     }
 }
