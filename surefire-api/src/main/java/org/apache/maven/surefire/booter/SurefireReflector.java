@@ -37,7 +37,6 @@ import org.apache.maven.surefire.util.SurefireReflectionException;
 import javax.annotation.Nonnull;
 import java.io.File;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -147,32 +146,9 @@ public class SurefireReflector
         int getSkipped = (Integer) invokeGetter( result, "getSkipped" );
         int getFailures = (Integer) invokeGetter( result, "getFailures" );
         return new RunResult( getCompletedCount1, getErrors, getFailures, getSkipped );
-
     }
 
-    class ClassLoaderProxy
-        implements InvocationHandler
-    {
-        private final Object target;
-
-        /**
-         * @param delegate a target
-         */
-        ClassLoaderProxy( Object delegate )
-        {
-            this.target = delegate;
-        }
-
-        @Override
-        public Object invoke( Object proxy, Method method, Object[] args )
-            throws Throwable
-        {
-            Method delegateMethod = target.getClass().getMethod( method.getName(), method.getParameterTypes() );
-            return delegateMethod.invoke( target, args );
-        }
-    }
-
-    Object createTestRequest( TestRequest suiteDefinition )
+    private Object createTestRequest( TestRequest suiteDefinition )
     {
         if ( suiteDefinition == null )
         {
@@ -191,7 +167,7 @@ public class SurefireReflector
         }
     }
 
-    Object createTestListResolver( TestListResolver resolver )
+    private Object createTestListResolver( TestListResolver resolver )
     {
         if ( resolver == null )
         {
@@ -204,7 +180,7 @@ public class SurefireReflector
         }
     }
 
-    Object createDirectoryScannerParameters( DirectoryScannerParameters directoryScannerParameters )
+    private Object createDirectoryScannerParameters( DirectoryScannerParameters directoryScannerParameters )
     {
         if ( directoryScannerParameters == null )
         {
@@ -222,8 +198,7 @@ public class SurefireReflector
                             RunOrder.asString( directoryScannerParameters.getRunOrder() ) );
     }
 
-
-    Object createRunOrderParameters( RunOrderParameters runOrderParameters )
+    private Object createRunOrderParameters( RunOrderParameters runOrderParameters )
     {
         if ( runOrderParameters == null )
         {
@@ -236,7 +211,7 @@ public class SurefireReflector
         return newInstance( constructor, RunOrder.asString( runOrderParameters.getRunOrder() ), runStatisticsFile );
     }
 
-    Object createTestArtifactInfo( TestArtifactInfo testArtifactInfo )
+    private Object createTestArtifactInfo( TestArtifactInfo testArtifactInfo )
     {
         if ( testArtifactInfo == null )
         {
@@ -247,7 +222,7 @@ public class SurefireReflector
         return newInstance( constructor, testArtifactInfo.getVersion(), testArtifactInfo.getClassifier() );
     }
 
-    Object createReporterConfiguration( ReporterConfiguration reporterConfig )
+    private Object createReporterConfiguration( ReporterConfiguration reporterConfig )
     {
         Constructor constructor = getConstructor( reporterConfiguration, File.class, boolean.class );
         return newInstance( constructor, reporterConfig.getReportsDirectory(), reporterConfig.isTrimStackTrace() );
@@ -315,7 +290,7 @@ public class SurefireReflector
         invokeSetter( o, "setSystemExitTimeout", Integer.class, systemExitTimeout );
     }
 
-    public void setDirectoryScannerParameters( Object o, DirectoryScannerParameters dirScannerParams )
+    void setDirectoryScannerParameters( Object o, DirectoryScannerParameters dirScannerParams )
     {
         Object param = createDirectoryScannerParameters( dirScannerParams );
         invokeSetter( o, "setDirectoryScannerParameters", directoryScannerParameters, param );
@@ -362,8 +337,7 @@ public class SurefireReflector
         }
     }
 
-
-    void setReporterConfiguration( Object o, ReporterConfiguration reporterConfiguration )
+    private void setReporterConfiguration( Object o, ReporterConfiguration reporterConfiguration )
     {
         Object param = createReporterConfiguration( reporterConfiguration );
         invokeSetter( o, "setReporterConfiguration", this.reporterConfiguration, param );
@@ -429,5 +403,4 @@ public class SurefireReflector
             throw new SurefireReflectionException( e );
         }
     }
-
 }
