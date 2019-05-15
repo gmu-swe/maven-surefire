@@ -25,6 +25,9 @@ import org.apache.maven.artifact.handler.ArtifactHandler;
 import org.apache.maven.artifact.handler.DefaultArtifactHandler;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.surefire.extensions.DefaultConsoleOutputReporter;
+import org.apache.maven.plugin.surefire.extensions.DefaultStatelessReporter;
+import org.apache.maven.plugin.surefire.extensions.DefaultStatelessTestsetInfoReporter;
 import org.apache.maven.surefire.suite.RunResult;
 import org.apache.maven.surefire.util.DefaultScanResult;
 import org.apache.maven.toolchain.Toolchain;
@@ -40,10 +43,56 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
+import static org.powermock.reflect.Whitebox.invokeMethod;
 import static org.powermock.reflect.Whitebox.setInternalState;
 
 public class MojoMocklessTest
 {
+    @Test
+    public void testGetStartupReportConfiguration() throws Exception
+    {
+        AbstractSurefireMojo surefirePlugin = new Mojo( null, null );
+        StartupReportConfiguration config = invokeMethod( surefirePlugin, "getStartupReportConfiguration", "", false );
+
+        assertThat( config.getXmlReporter() )
+                .isNotNull()
+                .isInstanceOf( DefaultStatelessReporter.class );
+
+        assertThat( config.getConsoleOutputReporter() )
+                .isNotNull()
+                .isInstanceOf( DefaultConsoleOutputReporter.class );
+
+        assertThat( config.getTestsetReporter() )
+                .isNotNull()
+                .isInstanceOf( DefaultStatelessTestsetInfoReporter.class );
+    }
+
+    @Test
+    public void testGetStartupReportConfiguration2() throws Exception
+    {
+        AbstractSurefireMojo surefirePlugin = new Mojo( null, null );
+        DefaultStatelessReporter xmlReporter = new DefaultStatelessReporter( false, "3.0" );
+        DefaultConsoleOutputReporter consoleReporter = new DefaultConsoleOutputReporter();
+        DefaultStatelessTestsetInfoReporter testsetInfoReporter = new DefaultStatelessTestsetInfoReporter();
+        setInternalState( surefirePlugin, "statelessReporter", xmlReporter );
+        setInternalState( surefirePlugin, "consoleOutputReporter", consoleReporter );
+        setInternalState( surefirePlugin, "statelessTestsetInfoReporter", testsetInfoReporter );
+
+        StartupReportConfiguration config = invokeMethod( surefirePlugin, "getStartupReportConfiguration", "", false );
+
+        assertThat( config.getXmlReporter() )
+                .isNotNull()
+                .isSameAs( xmlReporter );
+
+        assertThat( config.getConsoleOutputReporter() )
+                .isNotNull()
+                .isSameAs( consoleReporter );
+
+        assertThat( config.getTestsetReporter() )
+                .isNotNull()
+                .isSameAs( testsetInfoReporter );
+    }
+
     @Test
     public void testForkMode()
     {

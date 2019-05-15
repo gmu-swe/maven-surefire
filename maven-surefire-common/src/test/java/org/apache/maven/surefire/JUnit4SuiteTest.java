@@ -25,6 +25,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import org.apache.maven.plugin.surefire.AbstractSurefireMojoJava7PlusTest;
 import org.apache.maven.plugin.surefire.AbstractSurefireMojoTest;
+import org.apache.maven.plugin.surefire.CommonReflectorTest;
 import org.apache.maven.plugin.surefire.MojoMocklessTest;
 import org.apache.maven.plugin.surefire.SurefireHelperTest;
 import org.apache.maven.plugin.surefire.SurefireReflectorTest;
@@ -102,6 +103,7 @@ public class JUnit4SuiteTest extends TestCase
         suite.addTest( new JUnit4TestAdapter( StatelessReporterTest.class ) );
         suite.addTest( new JUnit4TestAdapter( TestSetStatsTest.class ) );
         suite.addTest( new JUnit4TestAdapter( StatelessTestsetInfoReporterTest.class ) );
+        suite.addTest( new JUnit4TestAdapter( CommonReflectorTest.class ) );
         return suite;
     }
 }

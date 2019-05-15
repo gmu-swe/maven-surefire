@@ -34,7 +34,6 @@ import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.util.RunOrder;
 import org.apache.maven.surefire.util.SurefireReflectionException;
 
-import javax.annotation.Nonnull;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -374,11 +373,6 @@ public class SurefireReflector
     private boolean isRunResult( Object o )
     {
         return runResult.isAssignableFrom( o.getClass() );
-    }
-
-    public Object createConsoleLogger( @Nonnull ConsoleLogger consoleLogger )
-    {
-        return createConsoleLogger( consoleLogger, surefireClassLoader );
     }
 
     private static Collection<Integer> toOrdinals( Collection<? extends Enum> enums )
