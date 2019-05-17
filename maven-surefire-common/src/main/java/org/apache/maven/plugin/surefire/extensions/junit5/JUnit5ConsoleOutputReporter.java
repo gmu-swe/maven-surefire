@@ -1,4 +1,4 @@
-package org.apache.maven.plugin.surefire.extensions;
+package org.apache.maven.plugin.surefire.extensions.junit5;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,14 +19,12 @@ package org.apache.maven.plugin.surefire.extensions;
  * under the License.
  */
 
+import org.apache.maven.plugin.surefire.extensions.SurefireConsoleOutputReporter;
 import org.apache.maven.plugin.surefire.report.ConsoleOutputFileReporter;
-import org.apache.maven.plugin.surefire.report.DirectConsoleOutput;
 import org.apache.maven.plugin.surefire.report.StatelessXmlReporter;
 import org.apache.maven.surefire.extensions.ConsoleOutputReportEventListener;
-import org.apache.maven.surefire.extensions.ConsoleOutputReporter;
 
 import java.io.File;
-import java.io.PrintStream;
 
 /**
  * The extension of {@link StatelessXmlReporter logger} for JUnit5.
@@ -36,7 +34,7 @@ import java.io.PrintStream;
  * @since 3.0.0-M4
  */
 public class JUnit5ConsoleOutputReporter
-        extends ConsoleOutputReporter
+        extends SurefireConsoleOutputReporter
 {
     /**
      * {@code false} by default.
@@ -64,23 +62,13 @@ public class JUnit5ConsoleOutputReporter
     }
 
     @Override
-    public ConsoleOutputReportEventListener createListener( PrintStream out, PrintStream err )
-    {
-        return new DirectConsoleOutput( out, err );
-    }
-
-    @Override
     public Object clone( ClassLoader target )
     {
         try
         {
-            Class<?> cls = target.loadClass( getClass().getName() );
-            Object clone = cls.newInstance();
+            Object clone = super.clone( target );
 
-            cls.getMethod( "setDisable", boolean.class )
-                    .invoke( clone, isDisable() );
-            cls.getMethod( "setEncoding", String.class )
-                    .invoke( clone, getEncoding() );
+            Class<?> cls = clone.getClass();
             cls.getMethod( "setUsePhrasedFileName", boolean.class )
                     .invoke( clone, isUsePhrasedFileName() );
 

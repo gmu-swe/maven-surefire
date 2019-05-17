@@ -19,40 +19,38 @@ package org.apache.maven.plugin.surefire.extensions;
  * under the License.
  */
 
-import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
-import org.apache.maven.plugin.surefire.report.ConsoleReporter;
-import org.apache.maven.plugin.surefire.report.FileReporter;
-import org.apache.maven.plugin.surefire.report.TestSetStats;
-import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
-import org.apache.maven.surefire.extensions.StatelessTestsetInfoConsoleReportEventListener;
-import org.apache.maven.surefire.extensions.StatelessTestsetInfoFileReportEventListener;
-import org.apache.maven.surefire.extensions.StatelessTestsetInfoReporter;
+import org.apache.maven.plugin.surefire.report.ConsoleOutputFileReporter;
+import org.apache.maven.plugin.surefire.report.DirectConsoleOutput;
+import org.apache.maven.surefire.extensions.ConsoleOutputReportEventListener;
+import org.apache.maven.surefire.extensions.ConsoleOutputReporter;
 
 import java.io.File;
-import java.nio.charset.Charset;
+import java.io.PrintStream;
 
 /**
- * Extension listener for stateless file and console reporter of test-set.
+ * Default implementation for extension of console logger.
  * Signatures can be changed between major, minor versions or milestones.
+ * <br>
+ * Builds {@link ConsoleOutputReportEventListener listeners}.
+ * The listeners handle test set events.
  *
  * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
  * @since 3.0.0-M4
  */
-public class DefaultStatelessTestsetInfoReporter
-        extends StatelessTestsetInfoReporter<WrappedReportEntry, TestSetStats>
+public class SurefireConsoleOutputReporter
+        extends ConsoleOutputReporter
 {
     @Override
-    public StatelessTestsetInfoConsoleReportEventListener<WrappedReportEntry, TestSetStats> createListener(
-            ConsoleLogger logger )
+    public ConsoleOutputReportEventListener createListener( File reportsDirectory, String reportNameSuffix,
+                                                            Integer forkNumber )
     {
-        return new ConsoleReporter( logger, false, false );
+        return new ConsoleOutputFileReporter( reportsDirectory, reportNameSuffix, false, forkNumber, getEncoding() );
     }
 
     @Override
-    public StatelessTestsetInfoFileReportEventListener<WrappedReportEntry, TestSetStats> createListener(
-            File reportsDirectory, String reportNameSuffix, Charset encoding )
+    public ConsoleOutputReportEventListener createListener( PrintStream out, PrintStream err )
     {
-        return new FileReporter( reportsDirectory, reportNameSuffix, encoding, false, false, false );
+        return new DirectConsoleOutput( out, err );
     }
 
     @Override
@@ -65,6 +63,8 @@ public class DefaultStatelessTestsetInfoReporter
 
             cls.getMethod( "setDisable", boolean.class )
                     .invoke( clone, isDisable() );
+            cls.getMethod( "setEncoding", String.class )
+                    .invoke( clone, getEncoding() );
 
             return clone;
         }
@@ -77,6 +77,9 @@ public class DefaultStatelessTestsetInfoReporter
     @Override
     public String toString()
     {
-        return "DefaultStatelessTestsetInfoReporter{disable=" + isDisable() + "}";
+        return "SurefireConsoleOutputReporter{"
+                + "disable=" + isDisable()
+                + ", encoding=" + getEncoding()
+                + '}';
     }
 }

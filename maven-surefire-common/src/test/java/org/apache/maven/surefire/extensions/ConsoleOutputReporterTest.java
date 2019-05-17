@@ -19,8 +19,8 @@ package org.apache.maven.surefire.extensions;
  * under the License.
  */
 
-import org.apache.maven.plugin.surefire.extensions.DefaultConsoleOutputReporter;
-import org.apache.maven.plugin.surefire.extensions.JUnit5ConsoleOutputReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireConsoleOutputReporter;
+import org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter;
 import org.apache.maven.plugin.surefire.report.ConsoleOutputFileReporter;
 import org.apache.maven.plugin.surefire.report.DirectConsoleOutput;
 import org.junit.Test;
@@ -31,14 +31,14 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.powermock.reflect.Whitebox.getInternalState;
 
 /**
- * tests for {@link DefaultConsoleOutputReporter} and {@link JUnit5ConsoleOutputReporter}.
+ * tests for {@link SurefireConsoleOutputReporter} and {@link JUnit5ConsoleOutputReporter}.
  */
 public class ConsoleOutputReporterTest
 {
     @Test
     public void shouldCloneConsoleReporter()
     {
-        DefaultConsoleOutputReporter extension = new DefaultConsoleOutputReporter();
+        SurefireConsoleOutputReporter extension = new SurefireConsoleOutputReporter();
         extension.setDisable( true );
         extension.setEncoding( "ISO-8859-1" );
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -46,27 +46,27 @@ public class ConsoleOutputReporterTest
         assertThat( clone )
                 .isNotSameAs( extension );
         assertThat( clone )
-                .isInstanceOf( DefaultConsoleOutputReporter.class );
+                .isInstanceOf( SurefireConsoleOutputReporter.class );
         assertThat( clone.toString() )
-                .isEqualTo( "DefaultConsoleOutputReporter{disable=true, encoding=ISO-8859-1}" );
-        assertThat( ( (DefaultConsoleOutputReporter) clone ).isDisable() )
+                .isEqualTo( "SurefireConsoleOutputReporter{disable=true, encoding=ISO-8859-1}" );
+        assertThat( ( (SurefireConsoleOutputReporter) clone ).isDisable() )
                 .isTrue();
-        assertThat( ( (DefaultConsoleOutputReporter) clone ).getEncoding() )
+        assertThat( ( (SurefireConsoleOutputReporter) clone ).getEncoding() )
                 .isEqualTo( "ISO-8859-1" );
     }
 
     @Test
     public void shouldAssertToStringConsoleReporter()
     {
-        DefaultConsoleOutputReporter extension = new DefaultConsoleOutputReporter();
+        SurefireConsoleOutputReporter extension = new SurefireConsoleOutputReporter();
         assertThat( extension.toString() )
-                .isEqualTo( "DefaultConsoleOutputReporter{disable=false, encoding=UTF-8}" );
+                .isEqualTo( "SurefireConsoleOutputReporter{disable=false, encoding=UTF-8}" );
     }
 
     @Test
     public void shouldCreateConsoleListener()
     {
-        ConsoleOutputReporter extension = new DefaultConsoleOutputReporter();
+        ConsoleOutputReporter extension = new SurefireConsoleOutputReporter();
 
         ConsoleOutputReportEventListener listener1 = extension.createListener( System.out, System.err );
         assertThat( listener1 )

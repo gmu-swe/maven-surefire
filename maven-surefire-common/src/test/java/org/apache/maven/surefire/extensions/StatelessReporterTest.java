@@ -20,8 +20,8 @@ package org.apache.maven.surefire.extensions;
  */
 
 import org.apache.maven.plugin.surefire.extensions.DefaultStatelessReportMojoConfiguration;
-import org.apache.maven.plugin.surefire.extensions.DefaultStatelessReporter;
-import org.apache.maven.plugin.surefire.extensions.JUnit5Xml30StatelessReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessReporter;
+import org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter;
 import org.apache.maven.plugin.surefire.report.StatelessXmlReporter;
 import org.apache.maven.plugin.surefire.report.TestSetStats;
 import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
@@ -36,14 +36,14 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.powermock.reflect.Whitebox.getInternalState;
 
 /**
- * tests for {@link DefaultStatelessReporter} and {@link JUnit5Xml30StatelessReporter}.
+ * tests for {@link SurefireStatelessReporter} and {@link JUnit5Xml30StatelessReporter}.
  */
 public class StatelessReporterTest
 {
     @Test
     public void shouldCloneXmlReporter()
     {
-        DefaultStatelessReporter extension = new DefaultStatelessReporter();
+        SurefireStatelessReporter extension = new SurefireStatelessReporter();
         extension.setDisable( true );
         extension.setVersion( "V1" );
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -52,21 +52,21 @@ public class StatelessReporterTest
         assertThat( clone )
                 .isNotSameAs( extension );
         assertThat( clone )
-                .isInstanceOf( DefaultStatelessReporter.class );
+                .isInstanceOf( SurefireStatelessReporter.class );
         assertThat( clone.toString() )
-                .isEqualTo( "DefaultStatelessReporter{version=V1, disable=true}" );
-        assertThat( ( (DefaultStatelessReporter) clone ).isDisable() )
+                .isEqualTo( "SurefireStatelessReporter{version=V1, disable=true}" );
+        assertThat( ( (SurefireStatelessReporter) clone ).isDisable() )
                 .isTrue();
-        assertThat( ( (DefaultStatelessReporter) clone ).getVersion() )
+        assertThat( ( (SurefireStatelessReporter) clone ).getVersion() )
                 .isEqualTo( "V1" );
     }
 
     @Test
     public void shouldAssertToStringXmlReporter()
     {
-        DefaultStatelessReporter extension = new DefaultStatelessReporter();
+        SurefireStatelessReporter extension = new SurefireStatelessReporter();
         assertThat( extension.toString() )
-                .isEqualTo( "DefaultStatelessReporter{version=3.0, disable=false}" );
+                .isEqualTo( "SurefireStatelessReporter{version=3.0, disable=false}" );
     }
 
     @Test
@@ -80,7 +80,7 @@ public class StatelessReporterTest
         DefaultStatelessReportMojoConfiguration config =
                 new DefaultStatelessReportMojoConfiguration( reportsDirectory, reportNameSuffix, true, 5, schema,
                         testClassMethodRunHistory );
-        DefaultStatelessReporter extension = new DefaultStatelessReporter();
+        SurefireStatelessReporter extension = new SurefireStatelessReporter();
 
         assertThat( extension.getVersion() )
                 .isEqualTo( "3.0" );

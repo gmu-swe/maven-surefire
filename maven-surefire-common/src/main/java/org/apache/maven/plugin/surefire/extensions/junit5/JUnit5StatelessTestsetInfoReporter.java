@@ -1,4 +1,4 @@
-package org.apache.maven.plugin.surefire.extensions;
+package org.apache.maven.plugin.surefire.extensions.junit5;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,7 @@ package org.apache.maven.plugin.surefire.extensions;
  * under the License.
  */
 
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessTestsetInfoReporter;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.ConsoleReporter;
 import org.apache.maven.plugin.surefire.report.FileReporter;
@@ -26,7 +27,6 @@ import org.apache.maven.plugin.surefire.report.TestSetStats;
 import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
 import org.apache.maven.surefire.extensions.StatelessTestsetInfoConsoleReportEventListener;
 import org.apache.maven.surefire.extensions.StatelessTestsetInfoFileReportEventListener;
-import org.apache.maven.surefire.extensions.StatelessTestsetInfoReporter;
 
 import java.io.File;
 import java.nio.charset.Charset;
@@ -39,7 +39,7 @@ import java.nio.charset.Charset;
  * @since 3.0.0-M4
  */
 public class JUnit5StatelessTestsetInfoReporter
-        extends StatelessTestsetInfoReporter<WrappedReportEntry, TestSetStats>
+        extends SurefireStatelessTestsetInfoReporter
 {
     /**
      * {@code false} by default.
@@ -117,11 +117,9 @@ public class JUnit5StatelessTestsetInfoReporter
     {
         try
         {
-            Class<?> cls = target.loadClass( getClass().getName() );
-            Object clone = cls.newInstance();
+            Object clone = super.clone( target );
 
-            cls.getMethod( "setDisable", boolean.class )
-                    .invoke( clone, isDisable() );
+            Class<?> cls = clone.getClass();
             cls.getMethod( "setUsePhrasedFileName", boolean.class )
                     .invoke( clone, isUsePhrasedFileName() );
             cls.getMethod( "setUsePhrasedClassNameInTestCaseSummary", boolean.class )

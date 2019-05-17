@@ -1,4 +1,4 @@
-package org.apache.maven.plugin.surefire.extensions;
+package org.apache.maven.plugin.surefire.extensions.junit5;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,6 +19,8 @@ package org.apache.maven.plugin.surefire.extensions;
  * under the License.
  */
 
+import org.apache.maven.plugin.surefire.extensions.DefaultStatelessReportMojoConfiguration;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessReporter;
 import org.apache.maven.plugin.surefire.report.StatelessXmlReporter;
 import org.apache.maven.plugin.surefire.report.TestSetStats;
 import org.apache.maven.plugin.surefire.report.WrappedReportEntry;
@@ -32,7 +34,7 @@ import org.apache.maven.surefire.extensions.StatelessReportEventListener;
  * @since 3.0.0-M4
  */
 public class JUnit5Xml30StatelessReporter
-        extends DefaultStatelessReporter
+        extends SurefireStatelessReporter
 {
     /**
      * {@code false} by default.

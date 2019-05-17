@@ -29,9 +29,9 @@ import java.util.Queue;
 import junit.framework.TestCase;
 
 import org.apache.maven.plugin.surefire.StartupReportConfiguration;
-import org.apache.maven.plugin.surefire.extensions.DefaultConsoleOutputReporter;
-import org.apache.maven.plugin.surefire.extensions.DefaultStatelessReporter;
-import org.apache.maven.plugin.surefire.extensions.DefaultStatelessTestsetInfoReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireConsoleOutputReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessTestsetInfoReporter;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.maven.surefire.report.RunStatistics;
@@ -79,8 +79,8 @@ public class DefaultReporterFactoryTest
         StartupReportConfiguration reportConfig =
                 new StartupReportConfiguration( true, true, "PLAIN", false, reportsDirectory, false, null,
                         new File( reportsDirectory, "TESTHASH" ), false, 1, null, null, false,
-                        new DefaultStatelessReporter(), new DefaultConsoleOutputReporter(),
-                        new DefaultStatelessTestsetInfoReporter() );
+                        new SurefireStatelessReporter(), new SurefireConsoleOutputReporter(),
+                        new SurefireStatelessTestsetInfoReporter() );
 
         DummyTestReporter reporter = new DummyTestReporter();
 
@@ -275,8 +275,8 @@ public class DefaultReporterFactoryTest
         StartupReportConfiguration reportConfig =
                 new StartupReportConfiguration( true, true, "PLAIN", false, reportsDirectory, false, null,
                         new File( reportsDirectory, "TESTHASH" ), false, 1, null, null, false,
-                        new DefaultStatelessReporter(), new DefaultConsoleOutputReporter(),
-                        new DefaultStatelessTestsetInfoReporter() );
+                        new SurefireStatelessReporter(), new SurefireConsoleOutputReporter(),
+                        new SurefireStatelessTestsetInfoReporter() );
 
         DummyTestReporter reporter = new DummyTestReporter();
 
@@ -328,8 +328,8 @@ public class DefaultReporterFactoryTest
         StartupReportConfiguration reportConfig =
                 new StartupReportConfiguration( true, true, "PLAIN", false, reportsDirectory, false, null,
                         new File( reportsDirectory, "TESTHASH" ), false, 0, null, null, false,
-                        new DefaultStatelessReporter(), new DefaultConsoleOutputReporter(),
-                        new DefaultStatelessTestsetInfoReporter() );
+                        new SurefireStatelessReporter(), new SurefireConsoleOutputReporter(),
+                        new SurefireStatelessTestsetInfoReporter() );
 
         assertTrue( reportConfig.isUseFile() );
         assertTrue( reportConfig.isPrintSummary() );

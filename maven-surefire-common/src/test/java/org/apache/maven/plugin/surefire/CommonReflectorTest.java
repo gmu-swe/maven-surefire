@@ -19,9 +19,9 @@ package org.apache.maven.plugin.surefire;
  * under the License.
  */
 
-import org.apache.maven.plugin.surefire.extensions.DefaultConsoleOutputReporter;
-import org.apache.maven.plugin.surefire.extensions.DefaultStatelessReporter;
-import org.apache.maven.plugin.surefire.extensions.DefaultStatelessTestsetInfoReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireConsoleOutputReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessTestsetInfoReporter;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.junit.Before;
@@ -40,9 +40,9 @@ public class CommonReflectorTest
     private ConsoleLogger consoleLogger;
     private File reportsDirectory;
     private File statistics;
-    private DefaultStatelessReporter xmlReporter;
-    private DefaultConsoleOutputReporter consoleOutputReporter = new DefaultConsoleOutputReporter();
-    private DefaultStatelessTestsetInfoReporter infoReporter = new DefaultStatelessTestsetInfoReporter();
+    private SurefireStatelessReporter xmlReporter;
+    private SurefireConsoleOutputReporter consoleOutputReporter = new SurefireConsoleOutputReporter();
+    private SurefireStatelessTestsetInfoReporter infoReporter = new SurefireStatelessTestsetInfoReporter();
 
     @Before
     public void setup()
@@ -50,8 +50,8 @@ public class CommonReflectorTest
         File target = new File( System.getProperty( "user.dir" ), "target" );
         reportsDirectory = new File( target, "tmp6" );
         statistics = new File( reportsDirectory, "TESTHASH" );
-        xmlReporter = new DefaultStatelessReporter();
-        infoReporter = new DefaultStatelessTestsetInfoReporter();
+        xmlReporter = new SurefireStatelessReporter();
+        infoReporter = new SurefireStatelessTestsetInfoReporter();
 
         startupReportConfiguration = new StartupReportConfiguration( true, true, "PLAIN", false, reportsDirectory,
                 false, null, statistics, false, 1, null, null, false,

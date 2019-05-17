@@ -19,8 +19,8 @@ package org.apache.maven.surefire.extensions;
  * under the License.
  */
 
-import org.apache.maven.plugin.surefire.extensions.DefaultStatelessTestsetInfoReporter;
-import org.apache.maven.plugin.surefire.extensions.JUnit5StatelessTestsetInfoReporter;
+import org.apache.maven.plugin.surefire.extensions.SurefireStatelessTestsetInfoReporter;
+import org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter;
 import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.ConsoleReporter;
 import org.apache.maven.plugin.surefire.report.FileReporter;
@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
 import static org.powermock.reflect.Whitebox.getInternalState;
 
 /**
- * tests for {@link DefaultStatelessTestsetInfoReporter} and {@link JUnit5StatelessTestsetInfoReporter}.
+ * tests for {@link SurefireStatelessTestsetInfoReporter} and {@link JUnit5StatelessTestsetInfoReporter}.
  */
 @RunWith( PowerMockRunner.class )
 @PowerMockIgnore( { "org.jacoco.agent.rt.*", "com.vladium.emma.rt.*" } )
@@ -70,7 +70,7 @@ public class StatelessTestsetInfoReporterTest
     @Test
     public void shouldCloneReporter()
     {
-        DefaultStatelessTestsetInfoReporter extension = new DefaultStatelessTestsetInfoReporter();
+        SurefireStatelessTestsetInfoReporter extension = new SurefireStatelessTestsetInfoReporter();
         extension.setDisable( true );
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
@@ -78,19 +78,19 @@ public class StatelessTestsetInfoReporterTest
         assertThat( clone )
                 .isNotSameAs( extension );
         assertThat( clone )
-                .isInstanceOf( DefaultStatelessTestsetInfoReporter.class );
+                .isInstanceOf( SurefireStatelessTestsetInfoReporter.class );
         assertThat( clone.toString() )
-                .isEqualTo( "DefaultStatelessTestsetInfoReporter{disable=true}" );
-        assertThat( ( (DefaultStatelessTestsetInfoReporter) clone ).isDisable() )
+                .isEqualTo( "SurefireStatelessTestsetInfoReporter{disable=true}" );
+        assertThat( ( (SurefireStatelessTestsetInfoReporter) clone ).isDisable() )
                 .isTrue();
     }
 
     @Test
     public void shouldAssertToStringReporter()
     {
-        DefaultStatelessTestsetInfoReporter extension = new DefaultStatelessTestsetInfoReporter();
+        SurefireStatelessTestsetInfoReporter extension = new SurefireStatelessTestsetInfoReporter();
         assertThat( extension.toString() )
-                .isEqualTo( "DefaultStatelessTestsetInfoReporter{disable=false}" );
+                .isEqualTo( "SurefireStatelessTestsetInfoReporter{disable=false}" );
     }
 
     @Test
@@ -100,7 +100,7 @@ public class StatelessTestsetInfoReporterTest
         File reportsDirectory = new File( target, "surefire-reports" );
         String reportNameSuffix = "suffix";
         Charset encoding = StandardCharsets.UTF_8;
-        DefaultStatelessTestsetInfoReporter extension = new DefaultStatelessTestsetInfoReporter();
+        SurefireStatelessTestsetInfoReporter extension = new SurefireStatelessTestsetInfoReporter();
 
         assertThat( extension.isDisable() )
                 .isFalse();
@@ -129,7 +129,7 @@ public class StatelessTestsetInfoReporterTest
     @Test
     public void shouldCreateConsoleReporterListener()
     {
-        DefaultStatelessTestsetInfoReporter extension = new DefaultStatelessTestsetInfoReporter();
+        SurefireStatelessTestsetInfoReporter extension = new SurefireStatelessTestsetInfoReporter();
 
         assertThat( extension.isDisable() )
                 .isFalse();

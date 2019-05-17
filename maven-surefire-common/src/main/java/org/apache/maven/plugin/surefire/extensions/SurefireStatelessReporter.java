@@ -26,19 +26,22 @@ import org.apache.maven.surefire.extensions.StatelessReportEventListener;
 import org.apache.maven.surefire.extensions.StatelessReporter;
 
 /**
- * Default implementation for extension of {@link StatelessXmlReporter} in plugin. This is a builder of
- * {@link StatelessReportEventListener listener}. The listener handles <em>testSetCompleted</em> event.
+ * Default implementation for extension of {@link StatelessXmlReporter} in plugin.
+ * Signatures can be changed between major, minor versions or milestones.
+ * <br>
+ * This is a builder of {@link StatelessReportEventListener listener}.
+ * The listener handles <em>testSetCompleted</em> event.
  *
  * author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
  * @since 3.0.0-M4
  */
-public class DefaultStatelessReporter
+public class SurefireStatelessReporter
         extends StatelessReporter<WrappedReportEntry, TestSetStats, DefaultStatelessReportMojoConfiguration>
 {
     /**
      * Activated in the injection point of MOJO.
      */
-    public DefaultStatelessReporter()
+    public SurefireStatelessReporter()
     {
         this( false, "3.0" );
     }
@@ -48,7 +51,7 @@ public class DefaultStatelessReporter
      * @param disable             {@code true} to disable performing the report
      * @param version             (xsd 3.0) version of the schema
      */
-    public DefaultStatelessReporter( boolean disable, String version )
+    public SurefireStatelessReporter( boolean disable, String version )
     {
         setDisable( disable );
         setVersion( version );
