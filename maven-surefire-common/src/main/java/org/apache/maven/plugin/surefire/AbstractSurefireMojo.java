@@ -1951,15 +1951,26 @@ public abstract class AbstractSurefireMojo
 
     private StartupReportConfiguration getStartupReportConfiguration( String configChecksum, boolean isForkMode )
     {
-        statelessReporter.setDisable( isDisableXmlReport() ); // todo change to Boolean in the version 3.0.0-M6
+        SurefireStatelessReporter xmlReporter =
+                statelessReporter == null
+                        ? new SurefireStatelessReporter( /*todo call def. constr.*/ isDisableXmlReport(), "3.0" )
+                        : statelessReporter;
+
+        xmlReporter.setDisable( isDisableXmlReport() ); // todo change to Boolean in the version 3.0.0-M6
+
+        SurefireConsoleOutputReporter outReporter =
+                consoleOutputReporter == null ? new SurefireConsoleOutputReporter() : consoleOutputReporter;
+
+        SurefireStatelessTestsetInfoReporter testsetReporter =
+                statelessTestsetInfoReporter == null
+                        ? new SurefireStatelessTestsetInfoReporter() : statelessTestsetInfoReporter;
 
         return new StartupReportConfiguration( isUseFile(), isPrintSummary(), getReportFormat(),
                                                isRedirectTestOutputToFile(),
                                                getReportsDirectory(), isTrimStackTrace(), getReportNameSuffix(),
                                                getStatisticsFile( configChecksum ), requiresRunHistory(),
                                                getRerunFailingTestsCount(), getReportSchemaLocation(), getEncoding(),
-                                               isForkMode, statelessReporter, consoleOutputReporter,
-                                               statelessTestsetInfoReporter );
+                                               isForkMode, xmlReporter, outReporter, testsetReporter );
     }
 
     private boolean isSpecificTestSpecified()
