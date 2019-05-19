@@ -52,10 +52,29 @@ public class MojoMocklessTest
     public void testGetStartupReportConfiguration() throws Exception
     {
         AbstractSurefireMojo surefirePlugin = new Mojo( null, null );
+        StartupReportConfiguration config = invokeMethod( surefirePlugin, "getStartupReportConfiguration", "", false );
+
+        assertThat( config.getXmlReporter() )
+                .isNotNull()
+                .isInstanceOf( SurefireStatelessReporter.class );
+
+        assertThat( config.getConsoleOutputReporter() )
+                .isNotNull()
+                .isInstanceOf( SurefireConsoleOutputReporter.class );
+
+        assertThat( config.getTestsetReporter() )
+                .isNotNull()
+                .isInstanceOf( SurefireStatelessTestsetInfoReporter.class );
+    }
+
+    @Test
+    public void testGetStartupReportConfiguration2() throws Exception
+    {
+        AbstractSurefireMojo surefirePlugin = new Mojo( null, null );
         SurefireStatelessReporter xmlReporter = new SurefireStatelessReporter( false, "3.0" );
         SurefireConsoleOutputReporter consoleReporter = new SurefireConsoleOutputReporter();
         SurefireStatelessTestsetInfoReporter testsetInfoReporter = new SurefireStatelessTestsetInfoReporter();
-        setInternalState( surefirePlugin, "statelessReporter", xmlReporter );
+        setInternalState( surefirePlugin, "statelessTestsetReporter", xmlReporter );
         setInternalState( surefirePlugin, "consoleOutputReporter", consoleReporter );
         setInternalState( surefirePlugin, "statelessTestsetInfoReporter", testsetInfoReporter );
 

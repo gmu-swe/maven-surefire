@@ -42,7 +42,7 @@ public class CommonReflector
 {
     private final Class<?> startupReportConfiguration;
     private final Class<?> consoleLogger;
-    private final Class<?> statelessReporter;
+    private final Class<?> statelessTestsetReporter;
     private final Class<?> consoleOutputReporter;
     private final Class<?> statelessTestsetInfoReporter;
     private final ClassLoader surefireClassLoader;
@@ -55,7 +55,7 @@ public class CommonReflector
         {
             startupReportConfiguration = surefireClassLoader.loadClass( StartupReportConfiguration.class.getName() );
             consoleLogger = surefireClassLoader.loadClass( ConsoleLogger.class.getName() );
-            statelessReporter = surefireClassLoader.loadClass( StatelessReporter.class.getName() );
+            statelessTestsetReporter = surefireClassLoader.loadClass( StatelessReporter.class.getName() );
             consoleOutputReporter = surefireClassLoader.loadClass( ConsoleOutputReporter.class.getName() );
             statelessTestsetInfoReporter =
                     surefireClassLoader.loadClass( StatelessTestsetInfoReporter.class.getName() );
@@ -82,7 +82,7 @@ public class CommonReflector
                                                      String.class, boolean.class, File.class,
                                                      boolean.class, String.class, File.class, boolean.class,
                                                      int.class, String.class, String.class, boolean.class,
-                                                     statelessReporter, consoleOutputReporter,
+                                                     statelessTestsetReporter, consoleOutputReporter,
                                                      statelessTestsetInfoReporter );
         //noinspection BooleanConstructorCall
         Object[] params = { reporterConfiguration.isUseFile(), reporterConfiguration.isPrintSummary(),

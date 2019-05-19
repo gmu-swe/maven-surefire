@@ -163,7 +163,7 @@ public abstract class AbstractSurefireMojo
      * Note: use the legacy system property <em>disableXmlReport</em> set to {@code true} to disable the report.
      */
     @Parameter
-    private SurefireStatelessReporter statelessReporter;
+    private SurefireStatelessReporter statelessTestsetReporter;
 
     @Parameter
     private SurefireConsoleOutputReporter consoleOutputReporter;
@@ -685,7 +685,8 @@ public abstract class AbstractSurefireMojo
 
     /**
      * Flag to disable the generation of report files in xml format.
-     * Deprecated since 3.0.0-M4. Instead use <em>disable</em> within {@code statelessReporter} since of 3.0.0-M6.
+     * Deprecated since 3.0.0-M4.
+     * Instead use <em>disable</em> within {@code statelessTestsetReporter} since of 3.0.0-M6.
      * @since 2.2
      */
     @Deprecated // todo make readonly to handle system property
@@ -1952,9 +1953,9 @@ public abstract class AbstractSurefireMojo
     private StartupReportConfiguration getStartupReportConfiguration( String configChecksum, boolean isForkMode )
     {
         SurefireStatelessReporter xmlReporter =
-                statelessReporter == null
+                statelessTestsetReporter == null
                         ? new SurefireStatelessReporter( /*todo call def. constr.*/ isDisableXmlReport(), "3.0" )
-                        : statelessReporter;
+                        : statelessTestsetReporter;
 
         xmlReporter.setDisable( isDisableXmlReport() ); // todo change to Boolean in the version 3.0.0-M6
 
