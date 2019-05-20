@@ -328,7 +328,7 @@ else
             <artifactId>${project.artifactId}</artifactId>
             <version>${project.version}</version>
             <configuration>
-                <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.JUnit5Xml30StatelessReporter">
+                <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
                     <disable>false</disable>
                     <version>3.0</version>
                     <usePhrasedFileName>false</usePhrasedFileName>
@@ -336,12 +336,12 @@ else
                     <usePhrasedTestCaseClassName>true</usePhrasedTestCaseClassName>
                     <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
                 </statelessTestsetReporter>
-                <consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.JUnit5ConsoleOutputReporter">
+                <consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter">
                     <disable>false</disable>
                     <encoding>UTF-8</encoding>
                     <usePhrasedFileName>false</usePhrasedFileName>
                 </consoleOutputReporter>
-                <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.JUnit5StatelessTestsetInfoReporter">
+                <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter">
                     <disable>false</disable>
                     <usePhrasedFileName>false</usePhrasedFileName>
                     <usePhrasedClassNameInRunning>true</usePhrasedClassNameInRunning>
