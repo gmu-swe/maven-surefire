@@ -46,6 +46,7 @@ final class RunListenerAdapter
     implements TestExecutionListener
 {
     private final ConcurrentMap<TestIdentifier, Long> testStartTime = new ConcurrentHashMap<>();
+    private final ConcurrentMap<TestIdentifier, TestExecutionResult> failures = new ConcurrentHashMap<>();
     private final RunListener runListener;
     private volatile TestPlan testPlan;
 
@@ -123,6 +124,7 @@ final class RunListenerAdapter
                     {
                         runListener.testError( createReportEntry( testIdentifier, testExecutionResult, elapsed ) );
                     }
+                    failures.put(testIdentifier, testExecutionResult);
                     break;
                 default:
                     if ( isTest )
@@ -236,7 +238,7 @@ final class RunListenerAdapter
      * @param testIdentifier a class or method
      * @return 4 elements string array
      */
-    private String[] toClassMethodName( TestIdentifier testIdentifier )
+    public String[] toClassMethodName( TestIdentifier testIdentifier )
     {
         Optional<TestSource> testSource = testIdentifier.getSource();
         String display = testIdentifier.getDisplayName();
@@ -272,5 +274,16 @@ final class RunListenerAdapter
                     .orElse( display );
             return new String[] { source, source, display, display };
         }
+    }
+
+    /**
+     * @return Map of tests that failed.
+     */
+    public Map<TestIdentifier, TestExecutionResult> getFailures() {
+        return failures;
+    }
+
+    public boolean hasFailingTests() {
+        return !getFailures().isEmpty();
     }
 }

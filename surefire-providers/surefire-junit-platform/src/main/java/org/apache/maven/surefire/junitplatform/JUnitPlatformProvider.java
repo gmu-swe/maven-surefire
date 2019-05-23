@@ -19,31 +19,6 @@ package org.apache.maven.surefire.junitplatform;
  * under the License.
  */
 
-import static java.util.Arrays.stream;
-import static java.util.Collections.emptyMap;
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
-import static java.util.logging.Level.WARNING;
-import static java.util.stream.Collectors.toList;
-import static org.apache.maven.surefire.booter.ProviderParameterNames.TESTNG_EXCLUDEDGROUPS_PROP;
-import static org.apache.maven.surefire.booter.ProviderParameterNames.TESTNG_GROUPS_PROP;
-import static org.apache.maven.surefire.report.ConsoleOutputCapture.startCapture;
-import static org.apache.maven.surefire.util.TestsToRun.fromClass;
-import static org.junit.platform.commons.util.StringUtils.isBlank;
-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
-import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.logging.Logger;
-
 import org.apache.maven.surefire.providerapi.AbstractProvider;
 import org.apache.maven.surefire.providerapi.ProviderParameters;
 import org.apache.maven.surefire.report.ConsoleOutputReceiver;
@@ -57,11 +32,33 @@ import org.apache.maven.surefire.util.ScanResult;
 import org.apache.maven.surefire.util.TestsToRun;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.engine.Filter;
+import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.TagFilter;
+import org.junit.platform.launcher.TestIdentifier;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.UncheckedIOException;
+import java.util.*;
+import java.util.logging.Logger;
+
+import static java.util.Arrays.stream;
+import static java.util.Collections.emptyMap;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+import static java.util.logging.Level.WARNING;
+import static java.util.stream.Collectors.toList;
+import static org.apache.maven.surefire.booter.ProviderParameterNames.TESTNG_EXCLUDEDGROUPS_PROP;
+import static org.apache.maven.surefire.booter.ProviderParameterNames.TESTNG_GROUPS_PROP;
+import static org.apache.maven.surefire.report.ConsoleOutputCapture.startCapture;
+import static org.apache.maven.surefire.util.TestsToRun.fromClass;
+import static org.junit.platform.commons.util.StringUtils.isBlank;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
 
 /**
  * JUnit 5 Platform Provider.
@@ -144,10 +141,53 @@ public class JUnitPlatformProvider
         return parameters.getRunOrderCalculator().orderTestClasses( scannedClasses );
     }
 
-    private void invokeAllTests( TestsToRun testsToRun, RunListener runListener )
-    {
-        LauncherDiscoveryRequest discoveryRequest = buildLauncherDiscoveryRequest( testsToRun );
-        launcher.execute( discoveryRequest, new RunListenerAdapter( runListener ) );
+    private void invokeAllTests( TestsToRun testsToRun, RunListener runListener ) {
+        LauncherDiscoveryRequest discoveryRequest = buildLauncherDiscoveryRequest(testsToRun);
+        RunListenerAdapter adapter = new RunListenerAdapter(runListener);
+        launcher.execute(discoveryRequest, adapter);
+        // Rerun failing tests if requested
+        int count = parameters.getTestRequest().getRerunFailingTestsCount();
+        if ( count > 0 && adapter.hasFailingTests() ) {
+            for ( int i = 0; i < count; i++ ) {
+                // Rerun tests.
+                Set<Class<?>> failed = getFailureSet( testsToRun, adapter );
+                TestsToRun failedTestsToRun = new TestsToRun( failed );
+                discoveryRequest = buildLauncherDiscoveryRequest( failedTestsToRun );
+                launcher.execute( discoveryRequest, adapter );
+                // If no tests fail in the rerun, we're done
+                if ( !adapter.hasFailingTests() ) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * @param testsToRun Original TestsToRun instance.
+     * @param adapter    Adapter containing failing tests.
+     * @return Set of classes to supply for a new TestsToRun.
+     */
+    private Set<Class<?>> getFailureSet(TestsToRun testsToRun, RunListenerAdapter adapter) {
+        Map<TestIdentifier, TestExecutionResult> failures = getFailingTests( adapter );
+        // Lookup of class names to class instances
+        Map<String, Class<?>> testLookup = new HashMap<>();
+        testsToRun.forEach(c -> testLookup.put(c.getName(), c));
+        // Filter classes of original TestsToRun by failed classes
+        Set<Class<?>> failed = new HashSet<>();
+        for (TestIdentifier testIdentifier : failures.keySet()) {
+            String[] classMethodName = adapter.toClassMethodName( testIdentifier );
+            String className = classMethodName[1];
+            failed.add(testLookup.get(className));
+        }
+        return failed;
+    }
+
+    private Map<TestIdentifier,TestExecutionResult> getFailingTests(RunListenerAdapter adapter) {
+        // copy results
+        Map<TestIdentifier,TestExecutionResult> copy = new HashMap<>(adapter.getFailures());
+        // remove results from the adapter so a re-execution can repopulate a fresh map
+        adapter.getFailures().clear();
+        return copy;
     }
 
     private LauncherDiscoveryRequest buildLauncherDiscoveryRequest( TestsToRun testsToRun )
