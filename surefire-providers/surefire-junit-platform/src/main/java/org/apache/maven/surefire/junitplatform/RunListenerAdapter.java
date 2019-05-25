@@ -124,7 +124,7 @@ final class RunListenerAdapter
                     {
                         runListener.testError( createReportEntry( testIdentifier, testExecutionResult, elapsed ) );
                     }
-                    failures.put(testIdentifier, testExecutionResult);
+                    failures.put( testIdentifier, testExecutionResult );
                     break;
                 default:
                     if ( isTest )
@@ -279,11 +279,13 @@ final class RunListenerAdapter
     /**
      * @return Map of tests that failed.
      */
-    public Map<TestIdentifier, TestExecutionResult> getFailures() {
+    public Map<TestIdentifier, TestExecutionResult> getFailures()
+    {
         return failures;
     }
 
-    public boolean hasFailingTests() {
+    public boolean hasFailingTests()
+    {
         return !getFailures().isEmpty();
     }
 }
