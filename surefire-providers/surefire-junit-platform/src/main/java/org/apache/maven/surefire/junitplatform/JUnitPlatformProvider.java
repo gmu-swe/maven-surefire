@@ -160,7 +160,7 @@ public class JUnitPlatformProvider
             for ( int i = 0; i < count; i++ )
             {
                 // Rerun tests.
-                Set<Class<?>> failed = getFailureSet( discoveryRequest, testsToRun, adapter );
+                Set<Class<?>> failed = getFailureSet( testsToRun, adapter );
                 TestsToRun failedTestsToRun = new TestsToRun( failed );
                 discoveryRequest = buildLauncherDiscoveryRequest( failedTestsToRun );
                 launcher.execute( discoveryRequest, adapter );
@@ -174,13 +174,11 @@ public class JUnitPlatformProvider
     }
 
     /**
-     * @param discoveryRequest Discoverer
      * @param testsToRun Original TestsToRun instance.
      * @param adapter    Adapter containing failing tests.
      * @return Set of classes to supply for a new TestsToRun.
      */
-    private Set<Class<?>> getFailureSet( LauncherDiscoveryRequest discoveryRequest,
-                                         TestsToRun testsToRun, RunListenerAdapter adapter )
+    private Set<Class<?>> getFailureSet( TestsToRun testsToRun, RunListenerAdapter adapter )
     {
         Map<TestIdentifier, TestExecutionResult> failures = getFailingTests( adapter );
         // Lookup of class names to class instances
