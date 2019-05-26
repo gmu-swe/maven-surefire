@@ -157,6 +157,7 @@ public class JUnitPlatformProvider
         {
             for ( int i = 0; i < count; i++ )
             {
+                // Replace the "discoveryRequest" so that it only specifies the failing tests
                 discoveryRequest = buildLauncherDiscoveryRequestForRerunFailures( adapter );
                 // Reset adapter's recorded failures and invoke the tests again
                 adapter.getFailures().clear();
@@ -185,12 +186,14 @@ public class JUnitPlatformProvider
     {
         LauncherDiscoveryRequestBuilder builder =
                 request().filters( filters ).configurationParameters( configurationParameters );
-
+            // Iterate over recorded failures
             for ( TestIdentifier identifier : adapter.getFailures().keySet() )
             {
+                // Extract quantified test name data
                 String[] classMethodName = adapter.toClassMethodName( identifier );
                 String className = classMethodName[1];
                 String methodName = classMethodName[3];
+                // Add filter for the specific failing method
                 builder.selectors( selectMethod( className, methodName ) );
             }
         return builder.build();
