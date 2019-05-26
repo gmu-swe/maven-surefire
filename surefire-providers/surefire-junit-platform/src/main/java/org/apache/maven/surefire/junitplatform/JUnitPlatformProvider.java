@@ -31,6 +31,7 @@ import static org.apache.maven.surefire.report.ConsoleOutputCapture.startCapture
 import static org.apache.maven.surefire.util.TestsToRun.fromClass;
 import static org.junit.platform.commons.util.StringUtils.isBlank;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectMethod;
 import static org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder.request;
 
 import java.io.IOException;
@@ -40,8 +41,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -59,7 +58,6 @@ import org.apache.maven.surefire.util.ScanResult;
 import org.apache.maven.surefire.util.TestsToRun;
 import org.junit.platform.commons.util.StringUtils;
 import org.junit.platform.engine.Filter;
-import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.TagFilter;
@@ -159,10 +157,9 @@ public class JUnitPlatformProvider
         {
             for ( int i = 0; i < count; i++ )
             {
-                // Rerun tests.
-                Set<Class<?>> failed = getFailureSet( testsToRun, adapter );
-                TestsToRun failedTestsToRun = new TestsToRun( failed );
-                discoveryRequest = buildLauncherDiscoveryRequest( failedTestsToRun );
+                discoveryRequest = buildLauncherDiscoveryRequestForRerunFailures( adapter );
+                // Reset adapter's recorded failures and invoke the tests again
+                adapter.getFailures().clear();
                 launcher.execute( discoveryRequest, adapter );
                 // If no tests fail in the rerun, we're done
                 if ( !adapter.hasFailingTests() )
@@ -173,46 +170,29 @@ public class JUnitPlatformProvider
         }
     }
 
-    /**
-     * @param testsToRun Original TestsToRun instance.
-     * @param adapter    Adapter containing failing tests.
-     * @return Set of classes to supply for a new TestsToRun.
-     */
-    private Set<Class<?>> getFailureSet( TestsToRun testsToRun, RunListenerAdapter adapter )
-    {
-        Map<TestIdentifier, TestExecutionResult> failures = getFailingTests( adapter );
-        // Lookup of class names to class instances
-        Map<String, Class<?>> testLookup = new HashMap<>();
-        testsToRun.forEach( c -> testLookup.put( c.getName(), c ) );
-        // Filter classes of original TestsToRun by failed classes
-        Set<Class<?>> failed = new HashSet<>();
-        for ( TestIdentifier testIdentifier : failures.keySet() )
-        {
-            // toClassMethodName requires testPlan
-            String[] classMethodName = adapter.toClassMethodName( testIdentifier );
-            String className = classMethodName[1];
-            failed.add( testLookup.get( className ) );
-        }
-        return failed;
-    }
-
-    private Map<TestIdentifier, TestExecutionResult> getFailingTests( RunListenerAdapter adapter )
-    {
-        // copy results
-        Map<TestIdentifier, TestExecutionResult> copy = new HashMap<>( adapter.getFailures() );
-        // remove results from the adapter so a re-execution can repopulate a fresh map
-        adapter.getFailures().clear();
-        return copy;
-    }
-
     private LauncherDiscoveryRequest buildLauncherDiscoveryRequest( TestsToRun testsToRun )
     {
         LauncherDiscoveryRequestBuilder builder =
-                        request().filters( filters ).configurationParameters( configurationParameters );
+                request().filters( filters ).configurationParameters( configurationParameters );
         for ( Class<?> testClass : testsToRun )
         {
             builder.selectors( selectClass( testClass ) );
         }
+        return builder.build();
+    }
+
+    private LauncherDiscoveryRequest buildLauncherDiscoveryRequestForRerunFailures( RunListenerAdapter adapter )
+    {
+        LauncherDiscoveryRequestBuilder builder =
+                request().filters( filters ).configurationParameters( configurationParameters );
+
+            for ( TestIdentifier identifier : adapter.getFailures().keySet() )
+            {
+                String[] classMethodName = adapter.toClassMethodName( identifier );
+                String className = classMethodName[1];
+                String methodName = classMethodName[3];
+                builder.selectors( selectMethod( className, methodName ) );
+            }
         return builder.build();
     }
 
