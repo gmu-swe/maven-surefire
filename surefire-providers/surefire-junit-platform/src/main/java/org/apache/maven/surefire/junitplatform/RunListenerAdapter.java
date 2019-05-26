@@ -48,7 +48,7 @@ final class RunListenerAdapter
     private final ConcurrentMap<TestIdentifier, Long> testStartTime = new ConcurrentHashMap<>();
     private final ConcurrentMap<TestIdentifier, TestExecutionResult> failures = new ConcurrentHashMap<>();
     private final RunListener runListener;
-    private volatile TestPlan testPlan, lastTestPlan;
+    private volatile TestPlan testPlan;
 
     RunListenerAdapter( RunListener runListener )
     {
@@ -59,13 +59,11 @@ final class RunListenerAdapter
     public void testPlanExecutionStarted( TestPlan testPlan )
     {
         this.testPlan = testPlan;
-        this.lastTestPlan = testPlan;
     }
 
     @Override
     public void testPlanExecutionFinished( TestPlan testPlan )
     {
-        this.testPlan = null;
         testStartTime.clear();
     }
 
@@ -249,7 +247,7 @@ final class RunListenerAdapter
             MethodSource methodSource = testSource.map( MethodSource.class::cast ).get();
             String realClassName = methodSource.getClassName();
 
-            String[] source = lastTestPlan.getParent( testIdentifier )
+            String[] source = testPlan.getParent( testIdentifier )
                     .map( this::toClassMethodName )
                     .map( s -> new String[] { s[0], s[1] } )
                     .orElse( new String[] { realClassName, realClassName } );
