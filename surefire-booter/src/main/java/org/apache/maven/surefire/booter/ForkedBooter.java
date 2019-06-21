@@ -390,7 +390,14 @@ public final class ForkedBooter
         ForkedBooter booter = new ForkedBooter();
         try
         {
-            booter.setupBooter( args[0], args[1], args[2], args.length > 3 ? args[3] : null );
+            CmdParser parser = new CmdParser(args);
+            String tmpDir = parser.getIndexArg( 0 );
+            String dumpFileName = parser.getIndexArg( 1 );
+            String surefirePropsName = parser.getIndexArg( 2 );
+            String effectiveSystemPropertiesFile = parser.getOptionalArg( "props" );
+            // TODO: incorperate
+            String singleTestClassName = parser.getOptionalArg( "testClass" );
+            booter.setupBooter( tmpDir, dumpFileName, surefirePropsName, effectiveSystemPropertiesFile );
             booter.execute();
         }
         catch ( Throwable t )

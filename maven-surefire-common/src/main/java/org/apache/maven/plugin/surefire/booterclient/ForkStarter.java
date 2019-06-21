@@ -417,7 +417,7 @@ public class ForkStarter
             int failFastCount = providerConfiguration.getSkipAfterFailureCount();
             final AtomicInteger notifyStreamsToSkipTestsJustNow = new AtomicInteger( failFastCount );
             final AtomicBoolean printedErrorStream = new AtomicBoolean();
-            for ( final Object testSet : getSuitesIterator() )
+            for ( final Class<?> testSet : getSuitesIterator() )
             {
                 Callable<RunResult> pf = new Callable<RunResult>()
                 {
@@ -540,7 +540,7 @@ public class ForkStarter
         }
     }
 
-    private RunResult fork( Object testSet, KeyValueSource providerProperties, ForkClient forkClient,
+    private RunResult fork( Class<?> testSet, KeyValueSource providerProperties, ForkClient forkClient,
                             SurefireProperties effectiveSystemProperties, int forkNumber,
                             AbstractForkInputStream testProvidingInputStream, boolean readTestsFromInStream )
         throws SurefireBooterForkException
@@ -585,13 +585,20 @@ public class ForkStarter
         {
             testProvidingInputStream.setFlushReceiverProvider( cli );
         }
-
+        // pass arguments to booter
+        //
+        // index-sensitive arguments
         cli.createArg().setValue( tempDir );
         cli.createArg().setValue( DUMP_FILE_PREFIX + forkNumber );
         cli.createArg().setValue( surefireProperties.getName() );
+        // optional arguments
         if ( systPropsFile != null )
         {
-            cli.createArg().setValue( systPropsFile.getName() );
+            cli.createArg().setValue( "-props:"  + systPropsFile.getName() );
+        }
+        if ( testSet != null && !forkConfiguration.isReuseForks() && forkConfiguration.getForkCount() == 1 )
+        {
+            cli.createArg().setValue( "-testClass:"  + testSet.getName() );
         }
 
         final ThreadedStreamConsumer threadedStreamConsumer = new ThreadedStreamConsumer( forkClient );
