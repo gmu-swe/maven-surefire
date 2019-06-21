@@ -390,7 +390,7 @@ public final class ForkedBooter
         ForkedBooter booter = new ForkedBooter();
         try
         {
-            CmdParser parser = new CmdParser(args);
+            CmdParser parser = new CmdParser( args );
             String tmpDir = parser.getIndexArg( 0 );
             String dumpFileName = parser.getIndexArg( 1 );
             String surefirePropsName = parser.getIndexArg( 2 );
