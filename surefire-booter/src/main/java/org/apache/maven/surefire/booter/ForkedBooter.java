@@ -34,6 +34,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
@@ -78,7 +79,7 @@ public final class ForkedBooter
     private Object testSet;
 
     private void setupBooter( String tmpDir, String dumpFileName, String surefirePropsFileName,
-                              String effectiveSystemPropertiesFileName )
+                              String effectiveSystemPropertiesFileName, String singleTestClassName )
             throws IOException
     {
         BooterDeserializer booterDeserializer =
@@ -109,7 +110,14 @@ public final class ForkedBooter
         ClassLoader classLoader = currentThread().getContextClassLoader();
         classLoader.setDefaultAssertionStatus( classpathConfiguration.isEnableAssertions() );
         boolean readTestsFromCommandReader = providerConfiguration.isReadTestsFromInStream();
-        testSet = createTestSet( providerConfiguration.getTestForFork(), readTestsFromCommandReader, classLoader );
+        if ( singleTestClassName != null )
+        {
+            testSet = createTestSet( singleTestClassName, classLoader );
+        }
+        else
+        {
+            testSet = createTestSet( providerConfiguration.getTestForFork(), readTestsFromCommandReader, classLoader );
+        }
     }
 
     private void execute()
@@ -130,6 +138,18 @@ public final class ForkedBooter
             eventChannel.consoleErrorLog( new LegacyPojoStackTraceWriter( "test subsystem", "no method", t ), false );
         }
         acknowledgedExit();
+    }
+
+    private Object createTestSet( String singleTestClassName, ClassLoader cl )
+    {
+        try
+        {
+            return cl.loadClass( singleTestClassName );
+        }
+        catch ( Exception ex )
+        {
+            throw new IllegalStateException( "Passed test class does not exist: " + singleTestClassName );
+        }
     }
 
     private Object createTestSet( TypeEncodedValue forkedTestSet, boolean readTestsFromCommandReader, ClassLoader cl )
@@ -391,14 +411,21 @@ public final class ForkedBooter
         try
         {
             CmdParser parser = new CmdParser( args );
-            String tmpDir = parser.getIndexArg( 0 );
-            String dumpFileName = parser.getIndexArg( 1 );
-            String surefirePropsName = parser.getIndexArg( 2 );
-            String effectiveSystemPropertiesFile = parser.getOptionalArg( "props" );
-            // TODO: incorperate
-            String singleTestClassName = parser.getOptionalArg( "testClass" );
-            booter.setupBooter( tmpDir, dumpFileName, surefirePropsName, effectiveSystemPropertiesFile );
-            booter.execute();
+            if ( parser.parse() )
+            {
+                String tmpDir = parser.getIndexArg( 0 );
+                String dumpFileName = parser.getIndexArg( 1 );
+                String surefirePropsName = parser.getIndexArg( 2 );
+                String effectiveSystemPropertiesFile = parser.getOptionalArg( "props" );
+                String singleTestClassName = parser.getOptionalArg( "testClass" );
+                booter.setupBooter( tmpDir, dumpFileName, surefirePropsName,
+                        effectiveSystemPropertiesFile, singleTestClassName );
+                booter.execute();
+            }
+            else
+            {
+                throw new IllegalStateException( "Invalid arguments given: " + Arrays.toString( args ) );
+            }
         }
         catch ( Throwable t )
         {
