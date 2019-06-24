@@ -26,6 +26,7 @@ import org.apache.maven.surefire.testset.TestSetFailedException;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -83,24 +84,31 @@ public final class CommandReader
 
     private volatile ConsoleLogger logger = new NullConsoleLogger();
 
-    private final Socket socket;
+    private InputStream inputStream;
 
-    private CommandReader( Socket socket )
+    public CommandReader( InputStream inputStream )
     {
-        this.socket = socket;
+        this.inputStream = inputStream;
+        READER = this;
     }
 
-    public static CommandReader getReader()
-    {
-        throw new UnsupportedOperationException("TODO: Rewrite tests calling this, see below");
-    }
-
-    public static CommandReader getReader( Socket socket )
+    public static CommandReader getReader( Socket socket ) throws IOException
     {
         // initialize if needed
         if ( READER == null )
         {
-            READER = new CommandReader( socket );
+            READER = new CommandReader( socket.getInputStream() );
+        }
+        return getReader();
+    }
+
+
+    public static CommandReader getReader()
+    {
+        // initialize if needed
+        if ( READER == null )
+        {
+            READER = new CommandReader( System.in );
         }
         // get and start
         CommandReader reader = READER;
@@ -391,7 +399,7 @@ public final class CommandReader
             boolean isTestSetFinished = false;
             try
             {
-                DataInputStream stdIn = new DataInputStream( socket.getInputStream() );
+                DataInputStream stdIn = new DataInputStream( inputStream );
                 while ( CommandReader.this.state.get() == RUNNABLE )
                 {
                     Command command = decode( stdIn );

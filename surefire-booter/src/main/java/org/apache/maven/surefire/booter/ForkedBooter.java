@@ -75,17 +75,17 @@ public final class ForkedBooter
     private volatile long systemExitTimeoutInSeconds = DEFAULT_SYSTEM_EXIT_TIMEOUT_IN_SECONDS;
     private long timeoutMillis;
     private volatile PingScheduler pingScheduler;
+    private final Socket clientSocket;
+
 
     private ScheduledThreadPoolExecutor jvmTerminator;
     private ProviderConfiguration providerConfiguration;
     private StartupConfiguration startupConfiguration;
     private Object testSet;
-    private Socket clientSocket;
 
-    private ForkedBooter( int forkStarterPort ) throws IOException
+    private ForkedBooter(Socket clientSocket) throws IOException
     {
-        String ip = "127.0.0.1";
-        clientSocket = new Socket(ip, forkStarterPort);
+        this.clientSocket = clientSocket;
         commandReader = CommandReader.getReader( clientSocket );
         eventChannel = new ForkedChannelEncoder( clientSocket.getOutputStream() );
         timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
@@ -440,7 +440,8 @@ public final class ForkedBooter
         String singleTestClassName = parser.getOptionalArg( "testClass" );
         try
         {
-            ForkedBooter booter = new ForkedBooter( forkStarterPort );
+            Socket clientSocket = new Socket( "127.0.0.1", forkStarterPort );
+            ForkedBooter booter = new ForkedBooter( clientSocket );
             try
             {
                 booter.setupBooter( tmpDir, dumpFileName, surefirePropsName,
