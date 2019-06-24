@@ -79,8 +79,8 @@ public final class ForkedBooter
     private ProviderConfiguration providerConfiguration;
     private StartupConfiguration startupConfiguration;
     private Object testSet;
-
-    public ForkedBooter( boolean enableCommandThread )
+    
+    private ForkedBooter( boolean enableCommandThread )
     {
         commandReader = CommandReader.getReader( enableCommandThread );
         eventChannel = new ForkedChannelEncoder( System.out );
