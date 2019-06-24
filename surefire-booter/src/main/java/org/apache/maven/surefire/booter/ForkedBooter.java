@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
+import java.net.Socket;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -79,22 +80,15 @@ public final class ForkedBooter
     private ProviderConfiguration providerConfiguration;
     private StartupConfiguration startupConfiguration;
     private Object testSet;
-    
-    private ForkedBooter( boolean enableCommandThread )
+    private Socket clientSocket;
+
+    private ForkedBooter( int forkStarterPort ) throws IOException
     {
-        commandReader = CommandReader.getReader( enableCommandThread );
-        eventChannel = new ForkedChannelEncoder( System.out );
-        if ( enableCommandThread )
-        {
-            // Standard case
-            timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
-        }
-        else
-        {
-            // Special case where command thread is not needed.
-            // Timeout is essentially unnecessary.
-            timeoutMillis = MINIMAL_TIMEOUT_IN_MILLIS;
-        }
+        String ip = "127.0.0.1";
+        clientSocket = new Socket(ip, forkStarterPort);
+        commandReader = CommandReader.getReader( clientSocket );
+        eventChannel = new ForkedChannelEncoder( clientSocket.getOutputStream() );
+        timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
     }
 
     private void setupBooter( String tmpDir, String dumpFileName, String surefirePropsFileName,
@@ -336,19 +330,27 @@ public final class ForkedBooter
     {
         final Semaphore barrier = new Semaphore( 0 );
         commandReader.addByeAckListener( new CommandListener()
-                                          {
-                                              @Override
-                                              public void update( Command command )
-                                              {
-                                                  barrier.release();
-                                              }
-                                          }
+                                         {
+                                            @Override
+                                            public void update( Command command )
+                                            {
+                                                barrier.release();
+                                            }
+                                        }
         );
         eventChannel.bye();
         launchLastDitchDaemonShutdownThread( 0 );
         acquireOnePermit( barrier, timeoutMillis );
         cancelPingScheduler();
         commandReader.stop();
+        try
+        {
+            clientSocket.close();
+        }
+        catch ( Exception e )
+        {
+
+        }
         System.exit( 0 );
     }
 
@@ -425,32 +427,38 @@ public final class ForkedBooter
      */
     public static void main( String... args )
     {
-        ForkedBooter booter = new ForkedBooter( false );
+        CmdParser parser = new CmdParser( args );
+        if ( !parser.parse() )
+        {
+            throw new IllegalStateException("Invalid arguments given: " + Arrays.toString( args ) );
+        }
+        String tmpDir = parser.getIndexArg( 0 );
+        String dumpFileName = parser.getIndexArg( 1 );
+        String surefirePropsName = parser.getIndexArg( 2 );
+        int forkStarterPort = Integer.parseInt( parser.getIndexArg( 3 ) );
+        String effectiveSystemPropertiesFile = parser.getOptionalArg( "props" );
+        String singleTestClassName = parser.getOptionalArg( "testClass" );
         try
         {
-            CmdParser parser = new CmdParser( args );
-            if ( parser.parse() )
+            ForkedBooter booter = new ForkedBooter( forkStarterPort );
+            try
             {
-                String tmpDir = parser.getIndexArg( 0 );
-                String dumpFileName = parser.getIndexArg( 1 );
-                String surefirePropsName = parser.getIndexArg( 2 );
-                String effectiveSystemPropertiesFile = parser.getOptionalArg( "props" );
-                String singleTestClassName = parser.getOptionalArg( "testClass" );
                 booter.setupBooter( tmpDir, dumpFileName, surefirePropsName,
                         effectiveSystemPropertiesFile, singleTestClassName );
                 booter.execute();
             }
-            else
+            catch ( Throwable t )
             {
-                throw new IllegalStateException( "Invalid arguments given: " + Arrays.toString( args ) );
+                DumpErrorSingleton.getSingleton().dumpException( t );
+                t.printStackTrace();
+                booter.cancelPingScheduler();
+                booter.exit1();
             }
         }
-        catch ( Throwable t )
+        catch ( IOException e )
         {
-            DumpErrorSingleton.getSingleton().dumpException( t );
-            t.printStackTrace();
-            booter.cancelPingScheduler();
-            booter.exit1();
+            DumpErrorSingleton.getSingleton().dumpException( e );
+            e.printStackTrace();
         }
     }
 

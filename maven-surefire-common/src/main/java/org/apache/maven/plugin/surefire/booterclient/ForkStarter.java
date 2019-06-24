@@ -35,6 +35,11 @@ import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.shared.utils.cli.CommandLineCallable;
 import org.apache.maven.shared.utils.cli.CommandLineException;
+import org.apache.maven.shared.utils.cli.CommandLineTimeOutException;
+import org.apache.maven.shared.utils.cli.Commandline;
+import org.apache.maven.shared.utils.cli.ShutdownHookUtils;
+import org.apache.maven.shared.utils.cli.StreamConsumer;
+import org.apache.maven.shared.utils.cli.StreamPumper;
 import org.apache.maven.surefire.booter.AbstractPathConfiguration;
 import org.apache.maven.surefire.booter.KeyValueSource;
 import org.apache.maven.surefire.booter.PropertiesWrapper;
@@ -51,9 +56,15 @@ import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.util.DefaultScanResult;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
@@ -71,6 +82,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.StrictMath.min;
 import static java.lang.System.currentTimeMillis;
@@ -86,16 +98,12 @@ import static org.apache.maven.plugin.surefire.SurefireHelper.DUMP_FILE_PREFIX;
 import static org.apache.maven.plugin.surefire.SurefireHelper.replaceForkThreadsInPath;
 import static org.apache.maven.plugin.surefire.booterclient.ForkNumberBucket.drawNumber;
 import static org.apache.maven.plugin.surefire.booterclient.ForkNumberBucket.returnNumber;
-import static org.apache.maven.plugin.surefire.booterclient.lazytestprovider.TestLessInputStream
-                      .TestLessInputStreamBuilder;
-import static org.apache.maven.shared.utils.cli.CommandLineUtils.executeCommandLineAsCallable;
+import static org.apache.maven.plugin.surefire.booterclient.lazytestprovider.TestLessInputStream.TestLessInputStreamBuilder;
 import static org.apache.maven.shared.utils.cli.ShutdownHookUtils.addShutDownHook;
 import static org.apache.maven.shared.utils.cli.ShutdownHookUtils.removeShutdownHook;
 import static org.apache.maven.surefire.booter.SystemPropertyManager.writePropertiesFile;
 import static org.apache.maven.surefire.cli.CommandLineOption.SHOW_ERRORS;
-import static org.apache.maven.surefire.suite.RunResult.SUCCESS;
-import static org.apache.maven.surefire.suite.RunResult.failure;
-import static org.apache.maven.surefire.suite.RunResult.timeout;
+import static org.apache.maven.surefire.suite.RunResult.*;
 import static org.apache.maven.surefire.util.internal.ConcurrencyUtils.countDownToZero;
 import static org.apache.maven.surefire.util.internal.DaemonThreadFactory.newDaemonThread;
 import static org.apache.maven.surefire.util.internal.DaemonThreadFactory.newDaemonThreadFactory;
@@ -585,12 +593,25 @@ public class ForkStarter
         {
             testProvidingInputStream.setFlushReceiverProvider( cli );
         }
+        // setup server
+        ServerSocket serverSocket;
+        try
+        {
+            // auto-assign port randomly
+            serverSocket = new ServerSocket( 0 );
+        }
+        catch ( IOException e )
+        {
+            throw new IllegalStateException( e );
+        }
+        //
         // pass arguments to booter
         //
         // index-sensitive arguments
         cli.createArg().setValue( tempDir );
         cli.createArg().setValue( DUMP_FILE_PREFIX + forkNumber );
         cli.createArg().setValue( surefireProperties.getName() );
+        cli.createArg().setValue( String.valueOf( serverSocket.getLocalPort() ) );
         // optional arguments
         if ( systPropsFile != null )
         {
@@ -616,8 +637,8 @@ public class ForkStarter
                     new NativeStdErrStreamConsumer( forkClient.getDefaultReporterFactory() );
 
             CommandLineCallable future =
-                    executeCommandLineAsCallable( cli, testProvidingInputStream, threadedStreamConsumer,
-                                                        stdErrConsumer, 0, closer, ISO_8859_1 );
+                    executeCommandLineAsCallable2( cli, testProvidingInputStream, threadedStreamConsumer,
+                                                        stdErrConsumer, 0, serverSocket, closer, ISO_8859_1 );
 
             currentForkClients.add( forkClient );
 
@@ -633,7 +654,7 @@ public class ForkStarter
                         new SurefireBooterForkException( "Error occurred in starting fork, check output in log" );
             }
         }
-        catch ( CommandLineException e )
+        catch ( IOException | CommandLineException e )
         {
             runResult = failure( forkClient.getDefaultReporterFactory().getGlobalRunStatistics().getRunResult(), e );
             String cliErr = e.getLocalizedMessage();
@@ -825,5 +846,333 @@ public class ForkStarter
                 }
             }
         }, 0, TIMEOUT_CHECK_PERIOD_MILLIS, MILLISECONDS );
+    }
+
+    // ============================================================================= //
+
+    public static CommandLineCallable executeCommandLineAsCallable2(@Nonnull final Commandline cl,
+                                                                    @Nullable final InputStream systemIn,
+                                                                    final StreamConsumer systemOut,
+                                                                    final StreamConsumer systemErr,
+                                                                    final int timeoutInSeconds,
+                                                                    final ServerSocket serverSocket,
+                                                                    @Nullable final Runnable runAfterProcessTermination,
+                                                                    @Nullable final Charset streamCharset) throws CommandLineException, IOException
+    {
+        //noinspection ConstantConditions
+        if ( cl == null )
+        {
+            throw new IllegalArgumentException( "cl cannot be null." );
+        }
+
+        final Process p = cl.execute();
+
+        Socket clientSocket = serverSocket.accept();
+
+        final StreamFeeder inputFeeder = systemIn != null ? new StreamFeeder( systemIn, clientSocket.getOutputStream() ) : null;
+
+        final StreamPumper outputPumper = new StreamPumper( clientSocket.getInputStream(), systemOut );
+
+        final StreamPumper errorPumper = new StreamPumper( p.getErrorStream(), systemErr );
+
+        if ( inputFeeder != null )
+        {
+            inputFeeder.start();
+        }
+
+        outputPumper.start();
+
+        errorPumper.start();
+
+        final ProcessHook processHook = new ProcessHook( p );
+
+        ShutdownHookUtils.addShutDownHook( processHook );
+
+        return new CommandLineCallable()
+        {
+            public Integer call()
+                    throws CommandLineException
+            {
+                try
+                {
+                    int returnValue;
+                    if ( timeoutInSeconds <= 0 )
+                    {
+                        returnValue = p.waitFor();
+                    }
+                    else
+                    {
+                        long now = System.currentTimeMillis();
+                        long timeoutInMillis = 1000L * timeoutInSeconds;
+                        long finish = now + timeoutInMillis;
+                        while ( isAlive( p ) && ( System.currentTimeMillis() < finish ) )
+                        {
+                            Thread.sleep( 10 );
+                        }
+                        if ( isAlive( p ) )
+                        {
+                            throw new InterruptedException(
+                                    "Process timeout out after " + timeoutInSeconds + " seconds" );
+                        }
+
+                        returnValue = p.exitValue();
+                    }
+
+                    if ( runAfterProcessTermination != null )
+                    {
+                        runAfterProcessTermination.run();
+                    }
+
+                    waitForAllPumpers2( inputFeeder, outputPumper, errorPumper );
+
+                    if ( outputPumper.getException() != null )
+                    {
+                        throw new CommandLineException( "Error inside systemOut parser", outputPumper.getException() );
+                    }
+
+                    if ( errorPumper.getException() != null )
+                    {
+                        throw new CommandLineException( "Error inside systemErr parser", errorPumper.getException() );
+                    }
+
+                    return returnValue;
+                }
+                catch ( InterruptedException ex )
+                {
+                    if ( inputFeeder != null )
+                    {
+                        inputFeeder.disable();
+                    }
+
+                    outputPumper.disable();
+                    errorPumper.disable();
+                    throw new CommandLineTimeOutException( "Error while executing external command, process killed.",
+                            ex );
+                }
+                finally
+                {
+                    ShutdownHookUtils.removeShutdownHook( processHook );
+
+                    processHook.run();
+
+                    if ( inputFeeder != null )
+                    {
+                        inputFeeder.close();
+                    }
+
+                    outputPumper.close();
+
+                    errorPumper.close();
+
+                    try
+                    {
+                        serverSocket.close();
+                    } catch ( Exception e )
+                    {
+                        // Well, we tried!
+                    }
+                }
+            }
+        };
+    }
+
+    private static void waitForAllPumpers2(@Nullable StreamFeeder inputFeeder, StreamPumper outputPumper,
+                                          StreamPumper errorPumper )
+            throws InterruptedException
+    {
+        if ( inputFeeder != null )
+        {
+            inputFeeder.waitUntilDone();
+        }
+
+        outputPumper.waitUntilDone();
+        errorPumper.waitUntilDone();
+    }
+
+    private static boolean isAlive( Process p )
+    {
+        if ( p == null )
+        {
+            return false;
+        }
+
+        try
+        {
+            p.exitValue();
+            return false;
+        }
+        catch ( IllegalThreadStateException e )
+        {
+            return true;
+        }
+    }
+
+    private static class ProcessHook
+            extends Thread
+    {
+        private final Process process;
+
+        private ProcessHook( Process process )
+        {
+            super( "CommandlineUtils process shutdown hook" );
+            this.process = process;
+            this.setContextClassLoader( null );
+        }
+
+        /** {@inheritDoc} */
+        public void run()
+        {
+            process.destroy();
+        }
+    }
+
+    /**
+     * Read from an InputStream and write the output to an OutputStream.
+     *
+     * @author <a href="mailto:trygvis@inamo.no">Trygve Laugst&oslash;l</a>
+     * @version $Id: StreamFeeder.java 1703274 2015-09-15 19:20:31Z tibordigana $
+     */
+    static class StreamFeeder
+            extends AbstractStreamHandler
+    {
+        private final AtomicReference<InputStream> input;
+        private final AtomicReference<OutputStream> output;
+
+        /**
+         * Create a new StreamFeeder
+         *
+         * @param input  Stream to read from
+         * @param output Stream to write to
+         */
+        public StreamFeeder( InputStream input, OutputStream output )
+        {
+            this.input = new AtomicReference<InputStream>( input );
+            this.output = new AtomicReference<OutputStream>( output );
+        }
+
+        // ----------------------------------------------------------------------
+        // Runnable implementation
+        // ----------------------------------------------------------------------
+
+        @Override
+        public void run()
+        {
+            try
+            {
+                feed();
+            }
+            catch ( Throwable e )
+            {
+                // Catch everything so the streams will be closed and flagged as done.
+            }
+            finally
+            {
+                close();
+
+                synchronized ( this )
+                {
+                    notifyAll();
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------------
+        //
+        // ----------------------------------------------------------------------
+
+        public void close()
+        {
+            setDone();
+            final InputStream is = input.getAndSet( null );
+            if ( is != null )
+            {
+                try
+                {
+                    is.close();
+                }
+                catch ( IOException ex )
+                {
+                    // ignore
+                }
+            }
+
+            final OutputStream os = output.getAndSet( null );
+            if ( os != null )
+            {
+                try
+                {
+                    os.close();
+                }
+                catch ( IOException ex )
+                {
+                    // ignore
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------------
+        //
+        // ----------------------------------------------------------------------
+
+        @SuppressWarnings( "checkstyle:innerassignment" )
+        private void feed()
+                throws IOException
+        {
+            InputStream is = input.get();
+            OutputStream os = output.get();
+            if ( is != null && os != null )
+            {
+                for ( int data; !isDone() && ( data = is.read() ) != -1; )
+                {
+                    if ( !isDisabled() )
+                    {
+                        os.write( data );
+                    }
+                }
+            }
+        }
+
+    }
+
+    /**
+     * @author <a href="mailto:kristian.rosenvold@gmail.com">Kristian Rosenvold</a>
+     */
+    static class AbstractStreamHandler
+            extends Thread
+    {
+        private volatile boolean done;
+
+        private volatile boolean disabled;
+
+        boolean isDone()
+        {
+            return done;
+        }
+
+        public synchronized void waitUntilDone()
+                throws InterruptedException
+        {
+            while ( !isDone() )
+            {
+                wait();
+            }
+        }
+
+
+        boolean isDisabled()
+        {
+            return disabled;
+        }
+
+        public void disable()
+        {
+            disabled = true;
+        }
+
+        protected void setDone()
+        {
+            done = true;
+        }
+
     }
 }

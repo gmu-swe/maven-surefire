@@ -26,6 +26,7 @@ import org.apache.maven.surefire.testset.TestSetFailedException;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.Socket;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -62,7 +63,7 @@ public final class CommandReader
 {
     private static final String LAST_TEST_SYMBOL = "";
 
-    private static final CommandReader READER = new CommandReader();
+    private static CommandReader READER;
 
     private final Queue<BiProperty<MasterProcessCommand, CommandListener>> listeners = new ConcurrentLinkedQueue<>();
 
@@ -82,20 +83,28 @@ public final class CommandReader
 
     private volatile ConsoleLogger logger = new NullConsoleLogger();
 
-    private CommandReader()
+    private final Socket socket;
+
+    private CommandReader( Socket socket )
     {
+        this.socket = socket;
     }
 
     public static CommandReader getReader()
     {
-        return getReader( true );
+        throw new UnsupportedOperationException("TODO: Rewrite tests calling this, see below");
     }
 
-
-    public static CommandReader getReader( boolean start )
+    public static CommandReader getReader( Socket socket )
     {
-        final CommandReader reader = READER;
-        if ( start && reader.state.compareAndSet( NEW, RUNNABLE ) )
+        // initialize if needed
+        if ( READER == null )
+        {
+            READER = new CommandReader( socket );
+        }
+        // get and start
+        CommandReader reader = READER;
+        if ( reader.state.compareAndSet( NEW, RUNNABLE ) )
         {
             reader.commandThread.start();
         }
@@ -379,10 +388,10 @@ public final class CommandReader
         public void run()
         {
             CommandReader.this.startMonitor.countDown();
-            DataInputStream stdIn = new DataInputStream( System.in );
             boolean isTestSetFinished = false;
             try
             {
+                DataInputStream stdIn = new DataInputStream( socket.getInputStream() );
                 while ( CommandReader.this.state.get() == RUNNABLE )
                 {
                     Command command = decode( stdIn );
