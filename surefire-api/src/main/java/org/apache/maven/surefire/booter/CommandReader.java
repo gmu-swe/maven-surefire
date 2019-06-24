@@ -88,8 +88,14 @@ public final class CommandReader
 
     public static CommandReader getReader()
     {
+        return getReader( true );
+    }
+
+
+    public static CommandReader getReader( boolean start )
+    {
         final CommandReader reader = READER;
-        if ( reader.state.compareAndSet( NEW, RUNNABLE ) )
+        if ( start && reader.state.compareAndSet( NEW, RUNNABLE ) )
         {
             reader.commandThread.start();
         }

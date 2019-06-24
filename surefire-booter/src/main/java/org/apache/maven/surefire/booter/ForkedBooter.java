@@ -64,19 +64,38 @@ public final class ForkedBooter
     private static final long DEFAULT_SYSTEM_EXIT_TIMEOUT_IN_SECONDS = 30L;
     private static final long PING_TIMEOUT_IN_SECONDS = 30L;
     private static final long ONE_SECOND_IN_MILLIS = 1000L;
+    private static final long MINIMAL_TIMEOUT_IN_MILLIS = 100L;
     private static final String LAST_DITCH_SHUTDOWN_THREAD = "surefire-forkedjvm-last-ditch-daemon-shutdown-thread-";
     private static final String PING_THREAD = "surefire-forkedjvm-ping-";
 
-    private final CommandReader commandReader = CommandReader.getReader();
-    private final ForkedChannelEncoder eventChannel = new ForkedChannelEncoder( System.out );
+    private final CommandReader commandReader;
+    private final ForkedChannelEncoder eventChannel;
 
     private volatile long systemExitTimeoutInSeconds = DEFAULT_SYSTEM_EXIT_TIMEOUT_IN_SECONDS;
+    private long timeoutMillis;
     private volatile PingScheduler pingScheduler;
 
     private ScheduledThreadPoolExecutor jvmTerminator;
     private ProviderConfiguration providerConfiguration;
     private StartupConfiguration startupConfiguration;
     private Object testSet;
+
+    public ForkedBooter( boolean enableCommandThread )
+    {
+        commandReader = CommandReader.getReader( enableCommandThread );
+        eventChannel = new ForkedChannelEncoder( System.out );
+        if ( enableCommandThread )
+        {
+            // Standard case
+            timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
+        }
+        else
+        {
+            // Special case where command thread is not needed.
+            // Timeout is essentially unnecessary.
+            timeoutMillis = MINIMAL_TIMEOUT_IN_MILLIS;
+        }
+    }
 
     private void setupBooter( String tmpDir, String dumpFileName, String surefirePropsFileName,
                               String effectiveSystemPropertiesFileName, String singleTestClassName )
@@ -109,13 +128,13 @@ public final class ForkedBooter
 
         ClassLoader classLoader = currentThread().getContextClassLoader();
         classLoader.setDefaultAssertionStatus( classpathConfiguration.isEnableAssertions() );
-        boolean readTestsFromCommandReader = providerConfiguration.isReadTestsFromInStream();
         if ( singleTestClassName != null )
         {
             testSet = createTestSet( singleTestClassName, classLoader );
         }
         else
         {
+            boolean readTestsFromCommandReader = providerConfiguration.isReadTestsFromInStream();
             testSet = createTestSet( providerConfiguration.getTestForFork(), readTestsFromCommandReader, classLoader );
         }
     }
@@ -327,7 +346,6 @@ public final class ForkedBooter
         );
         eventChannel.bye();
         launchLastDitchDaemonShutdownThread( 0 );
-        long timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
         acquireOnePermit( barrier, timeoutMillis );
         cancelPingScheduler();
         commandReader.stop();
@@ -407,7 +425,7 @@ public final class ForkedBooter
      */
     public static void main( String... args )
     {
-        ForkedBooter booter = new ForkedBooter();
+        ForkedBooter booter = new ForkedBooter( false );
         try
         {
             CmdParser parser = new CmdParser( args );
