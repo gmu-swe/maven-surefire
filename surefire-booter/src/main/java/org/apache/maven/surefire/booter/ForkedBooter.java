@@ -65,7 +65,6 @@ public final class ForkedBooter
     private static final long DEFAULT_SYSTEM_EXIT_TIMEOUT_IN_SECONDS = 30L;
     private static final long PING_TIMEOUT_IN_SECONDS = 30L;
     private static final long ONE_SECOND_IN_MILLIS = 1000L;
-    private static final long MINIMAL_TIMEOUT_IN_MILLIS = 100L;
     private static final String LAST_DITCH_SHUTDOWN_THREAD = "surefire-forkedjvm-last-ditch-daemon-shutdown-thread-";
     private static final String PING_THREAD = "surefire-forkedjvm-ping-";
 
