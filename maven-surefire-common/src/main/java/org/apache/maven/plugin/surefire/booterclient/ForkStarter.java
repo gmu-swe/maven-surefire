@@ -35,11 +35,9 @@ import org.apache.maven.plugin.surefire.log.api.ConsoleLogger;
 import org.apache.maven.plugin.surefire.report.DefaultReporterFactory;
 import org.apache.maven.shared.utils.cli.CommandLineCallable;
 import org.apache.maven.shared.utils.cli.CommandLineException;
-import org.apache.maven.shared.utils.cli.CommandLineTimeOutException;
+import org.apache.maven.shared.utils.cli.CommandLineUtils;
 import org.apache.maven.shared.utils.cli.Commandline;
-import org.apache.maven.shared.utils.cli.ShutdownHookUtils;
 import org.apache.maven.shared.utils.cli.StreamConsumer;
-import org.apache.maven.shared.utils.cli.StreamPumper;
 import org.apache.maven.surefire.booter.AbstractPathConfiguration;
 import org.apache.maven.surefire.booter.KeyValueSource;
 import org.apache.maven.surefire.booter.PropertiesWrapper;
@@ -82,7 +80,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.StrictMath.min;
 import static java.lang.System.currentTimeMillis;
@@ -637,7 +634,7 @@ public class ForkStarter
                     new NativeStdErrStreamConsumer( forkClient.getDefaultReporterFactory() );
 
             CommandLineCallable future =
-                    executeCommandLineAsCallable2( cli, testProvidingInputStream, threadedStreamConsumer,
+                    executeCommandLineAsCallableWithSocketWrapping( cli, testProvidingInputStream, threadedStreamConsumer,
                                                         stdErrConsumer, 0, serverSocket, closer, ISO_8859_1 );
 
             currentForkClients.add( forkClient );
@@ -848,331 +845,135 @@ public class ForkStarter
         }, 0, TIMEOUT_CHECK_PERIOD_MILLIS, MILLISECONDS );
     }
 
-    // ============================================================================= //
-
-    public static CommandLineCallable executeCommandLineAsCallable2(@Nonnull final Commandline cl,
+    /**
+     * Wrapper call to allow redirection of the ForkedBooter's process's streams to the socket ICP streams.
+     */
+    public CommandLineCallable executeCommandLineAsCallableWithSocketWrapping( @Nonnull final Commandline cl,
                                                                     @Nullable final InputStream systemIn,
                                                                     final StreamConsumer systemOut,
                                                                     final StreamConsumer systemErr,
                                                                     final int timeoutInSeconds,
                                                                     final ServerSocket serverSocket,
                                                                     @Nullable final Runnable runAfterProcessTermination,
-                                                                    @Nullable final Charset streamCharset) throws CommandLineException, IOException
+                                                                    @Nullable final Charset streamCharset ) throws CommandLineException, IOException
     {
-        //noinspection ConstantConditions
-        if ( cl == null )
+        Commandline wrappingCommandLine = new Commandline()
         {
-            throw new IllegalArgumentException( "cl cannot be null." );
-        }
-
-        final Process p = cl.execute();
-
-        Socket clientSocket = serverSocket.accept();
-
-        final StreamFeeder inputFeeder = systemIn != null ? new StreamFeeder( systemIn, clientSocket.getOutputStream() ) : null;
-
-        final StreamPumper outputPumper = new StreamPumper( clientSocket.getInputStream(), systemOut );
-
-        final StreamPumper errorPumper = new StreamPumper( p.getErrorStream(), systemErr );
-
-        if ( inputFeeder != null )
-        {
-            inputFeeder.start();
-        }
-
-        outputPumper.start();
-
-        errorPumper.start();
-
-        final ProcessHook processHook = new ProcessHook( p );
-
-        ShutdownHookUtils.addShutDownHook( processHook );
-
-        return new CommandLineCallable()
-        {
-            public Integer call()
-                    throws CommandLineException
+            @Override
+            public Process execute() throws CommandLineException
             {
                 try
                 {
-                    int returnValue;
-                    if ( timeoutInSeconds <= 0 )
-                    {
-                        returnValue = p.waitFor();
-                    }
-                    else
-                    {
-                        long now = System.currentTimeMillis();
-                        long timeoutInMillis = 1000L * timeoutInSeconds;
-                        long finish = now + timeoutInMillis;
-                        while ( isAlive( p ) && ( System.currentTimeMillis() < finish ) )
-                        {
-                            Thread.sleep( 10 );
-                        }
-                        if ( isAlive( p ) )
-                        {
-                            throw new InterruptedException(
-                                    "Process timeout out after " + timeoutInSeconds + " seconds" );
-                        }
-
-                        returnValue = p.exitValue();
-                    }
-
-                    if ( runAfterProcessTermination != null )
-                    {
-                        runAfterProcessTermination.run();
-                    }
-
-                    waitForAllPumpers2( inputFeeder, outputPumper, errorPumper );
-
-                    if ( outputPumper.getException() != null )
-                    {
-                        throw new CommandLineException( "Error inside systemOut parser", outputPumper.getException() );
-                    }
-
-                    if ( errorPumper.getException() != null )
-                    {
-                        throw new CommandLineException( "Error inside systemErr parser", errorPumper.getException() );
-                    }
-
-                    return returnValue;
+                    return new ProcessSocketHook( cl.execute(), serverSocket );
                 }
-                catch ( InterruptedException ex )
+                catch ( IOException e )
                 {
-                    if ( inputFeeder != null )
-                    {
-                        inputFeeder.disable();
-                    }
-
-                    outputPumper.disable();
-                    errorPumper.disable();
-                    throw new CommandLineTimeOutException( "Error while executing external command, process killed.",
-                            ex );
-                }
-                finally
-                {
-                    ShutdownHookUtils.removeShutdownHook( processHook );
-
-                    processHook.run();
-
-                    if ( inputFeeder != null )
-                    {
-                        inputFeeder.close();
-                    }
-
-                    outputPumper.close();
-
-                    errorPumper.close();
-
-                    try
-                    {
-                        serverSocket.close();
-                    } catch ( Exception e )
-                    {
-                        // Well, we tried!
-                    }
+                    throw new IllegalStateException( "Failed to hook process for ICP" );
                 }
             }
         };
-    }
-
-    private static void waitForAllPumpers2(@Nullable StreamFeeder inputFeeder, StreamPumper outputPumper,
-                                          StreamPumper errorPumper )
-            throws InterruptedException
-    {
-        if ( inputFeeder != null )
-        {
-            inputFeeder.waitUntilDone();
-        }
-
-        outputPumper.waitUntilDone();
-        errorPumper.waitUntilDone();
-    }
-
-    private static boolean isAlive( Process p )
-    {
-        if ( p == null )
-        {
-            return false;
-        }
-
+        CommandLineCallable clc = CommandLineUtils.executeCommandLineAsCallable( wrappingCommandLine, systemIn, systemOut, systemErr,
+                timeoutInSeconds, runAfterProcessTermination, streamCharset );
         try
         {
-            p.exitValue();
-            return false;
+            serverSocket.close();
         }
-        catch ( IllegalThreadStateException e )
+        catch ( Exception e )
         {
-            return true;
+            // Well, we tried!
         }
-    }
-
-    private static class ProcessHook
-            extends Thread
-    {
-        private final Process process;
-
-        private ProcessHook( Process process )
-        {
-            super( "CommandlineUtils process shutdown hook" );
-            this.process = process;
-            this.setContextClassLoader( null );
-        }
-
-        /** {@inheritDoc} */
-        public void run()
-        {
-            process.destroy();
-        }
+        return clc;
     }
 
     /**
-     * Read from an InputStream and write the output to an OutputStream.
-     *
-     * @author <a href="mailto:trygvis@inamo.no">Trygve Laugst&oslash;l</a>
-     * @version $Id: StreamFeeder.java 1703274 2015-09-15 19:20:31Z tibordigana $
+     * Process wrapper to allow redirection of the streams to a socket's streams.
      */
-    static class StreamFeeder
-            extends AbstractStreamHandler
+    private static class ProcessSocketHook extends Process
     {
-        private final AtomicReference<InputStream> input;
-        private final AtomicReference<OutputStream> output;
+        private final Process wrapped;
+        private final Socket clientSocket;
 
-        /**
-         * Create a new StreamFeeder
-         *
-         * @param input  Stream to read from
-         * @param output Stream to write to
-         */
-        public StreamFeeder( InputStream input, OutputStream output )
+        public ProcessSocketHook(Process wrapped, ServerSocket serverSocket ) throws IOException
         {
-            this.input = new AtomicReference<InputStream>( input );
-            this.output = new AtomicReference<OutputStream>( output );
+            this.wrapped = wrapped;
+            this.clientSocket = serverSocket.accept();
+            clientSocket.setTcpNoDelay(true);
         }
 
-        // ----------------------------------------------------------------------
-        // Runnable implementation
-        // ----------------------------------------------------------------------
-
         @Override
-        public void run()
+        public OutputStream getOutputStream()
         {
             try
             {
-                feed();
+                // Hooked stream for ICP communication
+                return clientSocket.getOutputStream();
             }
-            catch ( Throwable e )
+            catch ( IOException e )
             {
-                // Catch everything so the streams will be closed and flagged as done.
+                throw new IllegalStateException( "Failed to hook OutputStream:out" );
             }
-            finally
+        }
+
+        @Override
+        public InputStream getInputStream()
+        {
+            try
             {
-                close();
-
-                synchronized ( this )
-                {
-                    notifyAll();
-                }
+                // Hooked stream for ICP communication
+                return clientSocket.getInputStream();
             }
-        }
-
-        // ----------------------------------------------------------------------
-        //
-        // ----------------------------------------------------------------------
-
-        public void close()
-        {
-            setDone();
-            final InputStream is = input.getAndSet( null );
-            if ( is != null )
+            catch ( IOException e )
             {
-                try
-                {
-                    is.close();
-                }
-                catch ( IOException ex )
-                {
-                    // ignore
-                }
+                throw new IllegalStateException( "Failed to hook InputStream" );
             }
+        }
 
-            final OutputStream os = output.getAndSet( null );
-            if ( os != null )
+        @Override
+        public InputStream getErrorStream()
+        {
+            /* Causes some WILDLY inconsistent behavior, we'll hook this later...
+            try
             {
-                try
+                // Dummy stream
+                if ( clientSocket.isClosed() )
                 {
-                    os.close();
+                    return new DummyIn();
                 }
-                catch ( IOException ex )
-                {
-                    // ignore
-                }
+                // Hooked stream for ICP communication
+                return clientSocket.getInputStream();
             }
-        }
-
-        // ----------------------------------------------------------------------
-        //
-        // ----------------------------------------------------------------------
-
-        @SuppressWarnings( "checkstyle:innerassignment" )
-        private void feed()
-                throws IOException
-        {
-            InputStream is = input.get();
-            OutputStream os = output.get();
-            if ( is != null && os != null )
+            catch ( IOException e )
             {
-                for ( int data; !isDone() && ( data = is.read() ) != -1; )
-                {
-                    if ( !isDisabled() )
-                    {
-                        os.write( data );
-                    }
-                }
+                throw new IllegalStateException( "Failed to hook InputStream:err" );
             }
+            */
+            return wrapped.getErrorStream();
         }
 
-    }
-
-    /**
-     * @author <a href="mailto:kristian.rosenvold@gmail.com">Kristian Rosenvold</a>
-     */
-    static class AbstractStreamHandler
-            extends Thread
-    {
-        private volatile boolean done;
-
-        private volatile boolean disabled;
-
-        boolean isDone()
+        @Override
+        public int waitFor() throws InterruptedException
         {
-            return done;
+            return wrapped.waitFor();
         }
 
-        public synchronized void waitUntilDone()
-                throws InterruptedException
+        @Override
+        public int exitValue()
         {
-            while ( !isDone() )
+            return wrapped.exitValue();
+        }
+
+        @Override
+        public void destroy()
+        {
+            wrapped.destroy();
+            try
             {
-                wait();
+                clientSocket.close();
+            }
+            catch ( IOException e )
+            {
+                throw new IllegalStateException( "Failed to close process ICP socket" );
             }
         }
-
-
-        boolean isDisabled()
-        {
-            return disabled;
-        }
-
-        public void disable()
-        {
-            disabled = true;
-        }
-
-        protected void setDone()
-        {
-            done = true;
-        }
-
     }
 }
