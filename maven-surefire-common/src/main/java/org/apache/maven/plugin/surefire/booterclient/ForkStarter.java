@@ -846,7 +846,10 @@ public class ForkStarter
     }
 
     /**
-     * Wrapper call to allow redirection of the ForkedBooter's process's streams to the socket ICP streams.
+     * Wrapper call to allow redirection of the ForkedBooter's process's streams to the socket ICP streams.<br>
+     *
+     * <b>NOTE:</b> A more proper approach would be allowing "CommandLineUtils.executeCommandLineAsCallable" to pass
+     * the desired input/output streams.
      */
     public CommandLineCallable executeCommandLineAsCallableWithSocketWrapping( @Nonnull final Commandline cl,
                                                                     @Nullable final InputStream systemIn,
