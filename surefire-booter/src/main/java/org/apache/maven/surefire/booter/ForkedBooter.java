@@ -82,7 +82,7 @@ public final class ForkedBooter
     private StartupConfiguration startupConfiguration;
     private Object testSet;
 
-    private ForkedBooter(Socket clientSocket) throws IOException
+    private ForkedBooter( Socket clientSocket ) throws IOException
     {
         this.clientSocket = clientSocket;
         commandReader = CommandReader.getReader( clientSocket );
@@ -429,7 +429,7 @@ public final class ForkedBooter
         CmdParser parser = new CmdParser( args );
         if ( !parser.parse() )
         {
-            throw new IllegalStateException("Invalid arguments given: " + Arrays.toString( args ) );
+            throw new IllegalStateException( "Invalid arguments given: " + Arrays.toString( args ) );
         }
         String tmpDir = parser.getIndexArg( 0 );
         String dumpFileName = parser.getIndexArg( 1 );

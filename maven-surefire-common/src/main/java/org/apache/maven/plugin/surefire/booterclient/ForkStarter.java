@@ -100,7 +100,9 @@ import static org.apache.maven.shared.utils.cli.ShutdownHookUtils.addShutDownHoo
 import static org.apache.maven.shared.utils.cli.ShutdownHookUtils.removeShutdownHook;
 import static org.apache.maven.surefire.booter.SystemPropertyManager.writePropertiesFile;
 import static org.apache.maven.surefire.cli.CommandLineOption.SHOW_ERRORS;
-import static org.apache.maven.surefire.suite.RunResult.*;
+import static org.apache.maven.surefire.suite.RunResult.SUCCESS;
+import static org.apache.maven.surefire.suite.RunResult.timeout;
+import static org.apache.maven.surefire.suite.RunResult.failure;
 import static org.apache.maven.surefire.util.internal.ConcurrencyUtils.countDownToZero;
 import static org.apache.maven.surefire.util.internal.DaemonThreadFactory.newDaemonThread;
 import static org.apache.maven.surefire.util.internal.DaemonThreadFactory.newDaemonThreadFactory;
@@ -634,8 +636,8 @@ public class ForkStarter
                     new NativeStdErrStreamConsumer( forkClient.getDefaultReporterFactory() );
 
             CommandLineCallable future =
-                    executeCommandLineAsCallableWithSocketWrapping( cli, testProvidingInputStream, threadedStreamConsumer,
-                                                        stdErrConsumer, 0, serverSocket, closer, ISO_8859_1 );
+                    executeCommandLineAsCallableWithSocketWrapping( cli, testProvidingInputStream,
+                            threadedStreamConsumer, stdErrConsumer, 0, serverSocket, closer, ISO_8859_1 );
 
             currentForkClients.add( forkClient );
 
@@ -651,7 +653,7 @@ public class ForkStarter
                         new SurefireBooterForkException( "Error occurred in starting fork, check output in log" );
             }
         }
-        catch ( IOException | CommandLineException e )
+        catch ( CommandLineException e )
         {
             runResult = failure( forkClient.getDefaultReporterFactory().getGlobalRunStatistics().getRunResult(), e );
             String cliErr = e.getLocalizedMessage();
@@ -858,7 +860,8 @@ public class ForkStarter
                                                                     final int timeoutInSeconds,
                                                                     final ServerSocket serverSocket,
                                                                     @Nullable final Runnable runAfterProcessTermination,
-                                                                    @Nullable final Charset streamCharset ) throws CommandLineException, IOException
+                                                                    @Nullable final Charset streamCharset )
+            throws CommandLineException
     {
         Commandline wrappingCommandLine = new Commandline()
         {
@@ -875,8 +878,8 @@ public class ForkStarter
                 }
             }
         };
-        CommandLineCallable clc = CommandLineUtils.executeCommandLineAsCallable( wrappingCommandLine, systemIn, systemOut, systemErr,
-                timeoutInSeconds, runAfterProcessTermination, streamCharset );
+        CommandLineCallable clc = CommandLineUtils.executeCommandLineAsCallable( wrappingCommandLine, systemIn,
+                systemOut, systemErr, timeoutInSeconds, runAfterProcessTermination, streamCharset );
         try
         {
             serverSocket.close();
@@ -896,11 +899,11 @@ public class ForkStarter
         private final Process wrapped;
         private final Socket clientSocket;
 
-        public ProcessSocketHook(Process wrapped, ServerSocket serverSocket ) throws IOException
+        ProcessSocketHook( Process wrapped, ServerSocket serverSocket ) throws IOException
         {
             this.wrapped = wrapped;
             this.clientSocket = serverSocket.accept();
-            clientSocket.setTcpNoDelay(true);
+            clientSocket.setTcpNoDelay( true );
         }
 
         @Override

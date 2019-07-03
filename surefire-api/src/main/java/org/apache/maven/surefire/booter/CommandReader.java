@@ -64,7 +64,7 @@ public final class CommandReader
 {
     private static final String LAST_TEST_SYMBOL = "";
 
-    private static CommandReader READER;
+    private static CommandReader reader;
 
     private final Queue<BiProperty<MasterProcessCommand, CommandListener>> listeners = new ConcurrentLinkedQueue<>();
 
@@ -89,15 +89,15 @@ public final class CommandReader
     public CommandReader( InputStream inputStream )
     {
         this.inputStream = inputStream;
-        READER = this;
+        reader = this;
     }
 
     public static CommandReader getReader( Socket socket ) throws IOException
     {
         // initialize if needed
-        if ( READER == null )
+        if ( reader == null )
         {
-            READER = new CommandReader( socket.getInputStream() );
+            reader = new CommandReader( socket.getInputStream() );
         }
         return getReader();
     }
@@ -106,12 +106,12 @@ public final class CommandReader
     public static CommandReader getReader()
     {
         // initialize if needed
-        if ( READER == null )
+        if ( reader == null )
         {
-            READER = new CommandReader( System.in );
+            reader = new CommandReader( System.in );
         }
         // get and start
-        CommandReader reader = READER;
+        CommandReader reader = CommandReader.reader;
         if ( reader.state.compareAndSet( NEW, RUNNABLE ) )
         {
             reader.commandThread.start();
