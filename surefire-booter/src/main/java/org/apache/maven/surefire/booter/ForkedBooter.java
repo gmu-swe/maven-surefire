@@ -440,6 +440,7 @@ public final class ForkedBooter
         try
         {
             Socket clientSocket = new Socket( "127.0.0.1", forkStarterPort );
+            clientSocket.setTcpNoDelay( true );
             ForkedBooter booter = new ForkedBooter( clientSocket );
             try
             {
