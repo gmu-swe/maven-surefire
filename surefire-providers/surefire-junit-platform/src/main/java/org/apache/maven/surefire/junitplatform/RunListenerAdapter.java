@@ -65,6 +65,7 @@ final class RunListenerAdapter
     @Override
     public void testPlanExecutionFinished( TestPlan testPlan )
     {
+        this.testPlan = null;
         testStartTime.clear();
     }
 
@@ -255,6 +256,40 @@ final class RunListenerAdapter
         else
         {
             String source = testPlan.getParent( testIdentifier )
+                    .map( TestIdentifier::getDisplayName )
+                    .orElse( display );
+            return new String[] { source, source, display, display };
+        }
+    }
+
+    public String[] toClassMethodNameWithoutPlan( TestIdentifier testIdentifier )
+    {
+        Optional<TestSource> testSource = testIdentifier.getSource();
+        String display = testIdentifier.getDisplayName();
+
+        if ( testSource.filter( MethodSource.class::isInstance ).isPresent() )
+        {
+            MethodSource methodSource = testSource.map( MethodSource.class::cast ).get();
+            String realClassName = methodSource.getClassName();
+
+            String[] source = new String[] { realClassName, realClassName };
+            String methodName = methodSource.getMethodName();
+            boolean useMethod = display.equals( methodName ) || display.equals( methodName + "()" );
+            String resolvedMethodName = useMethod ? methodName : display;
+
+            return new String[] { source[0], source[1], methodName, resolvedMethodName };
+        }
+        else if ( testSource.filter( ClassSource.class::isInstance ).isPresent() )
+        {
+            ClassSource classSource = testSource.map( ClassSource.class::cast ).get();
+            String className = classSource.getClassName();
+            String simpleClassName = className.substring( 1 + className.lastIndexOf( '.' ) );
+            String source = display.equals( simpleClassName ) ? className : display;
+            return new String[] { className, source, null, null };
+        }
+        else
+        {
+            String source = testPlan == null ? display : testPlan.getParent( testIdentifier )
                     .map( TestIdentifier::getDisplayName )
                     .orElse( display );
             return new String[] { source, source, display, display };

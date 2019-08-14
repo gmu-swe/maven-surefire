@@ -190,7 +190,7 @@ public class JUnitPlatformProvider
             for ( TestIdentifier identifier : adapter.getFailures().keySet() )
             {
                 // Extract quantified test name data
-                String[] classMethodName = adapter.toClassMethodName( identifier );
+                String[] classMethodName = adapter.toClassMethodNameWithoutPlan( identifier );
                 String className = classMethodName[1];
                 String methodName = classMethodName[3];
                 // Add filter for the specific failing method
