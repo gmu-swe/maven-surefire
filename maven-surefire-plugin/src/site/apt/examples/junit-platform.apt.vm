@@ -209,11 +209,12 @@ else
    you can execute <<<mvn -Dtest=org.example.MyTest test>>> from the command line.
 
 
-* Filtering by Test Class Names
+* Filtering by Test Class Names for Maven ${thisPlugin}
 
-   The Maven Surefire Plugin will scan for test classes whose fully qualified names match
+   The Maven ${thisPlugin} Plugin will scan for test classes whose fully qualified names match
    the following patterns.
 
+#{if}(${project.artifactId}=="maven-surefire-plugin")
    * <<<**/Test*.java>>>
 
    * <<<**/*Test.java>>>
@@ -221,14 +222,21 @@ else
    * <<<**/*Tests.java>>>
 
    * <<<**/*TestCase.java>>>
+#{else}
+   * <<<**/IT*.java>>>
+
+   * <<<**/*IT.java>>>
+
+   * <<<**/*ITCase.java>>>
+#{end}
 
    Moreover, it will exclude all nested classes (including static member classes) by default.
 
    Note, however, that you can override this default behavior by configuring explicit
-   `include` and `exclude` rules in your `pom.xml` file. For example, to keep Maven Surefire
+   `include` and `exclude` rules in your `pom.xml` file. For example, to keep Maven ${thisPlugin}
    from excluding static member classes, you can override its exclude rules.
 
-* Overriding exclude rules of Maven Surefire
+* Overriding exclude rules of Maven ${thisPlugin}
 
 +---+
 ...
@@ -309,3 +317,56 @@ else
 </build>
 ...
 +---+
+
+
+* Surefire Extensions and Reports Configuration for @DisplayName
+
+   Since plugin version 3.0.0-M4 you can use fine grained configuration of reports and enable phrased names together
+   with <<<@DisplayName>>> in you tests.
+   This is the complete list of attributes of particular objects. You do not have to specify e.g. <<<disable>>>,
+   <<<version>>> and <<<encoding>>>. The boolean values reach default values <<<false>>> if not specified otherwise.
+
++---+
+...
+<build>
+    <plugins>
+        ...
+        <plugin>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>${project.artifactId}</artifactId>
+            <version>${project.version}</version>
+            <configuration>
+                <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+                    <disable>false</disable>
+                    <version>3.0</version>
+                    <usePhrasedFileName>false</usePhrasedFileName>
+                    <usePhrasedTestSuiteClassName>true</usePhrasedTestSuiteClassName>
+                    <usePhrasedTestCaseClassName>true</usePhrasedTestCaseClassName>
+                    <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+                </statelessTestsetReporter>
+                <consoleOutputReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5ConsoleOutputReporter">
+                    <disable>false</disable>
+                    <encoding>UTF-8</encoding>
+                    <usePhrasedFileName>false</usePhrasedFileName>
+                </consoleOutputReporter>
+                <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoReporter">
+                    <disable>false</disable>
+                    <usePhrasedFileName>false</usePhrasedFileName>
+                    <usePhrasedClassNameInRunning>true</usePhrasedClassNameInRunning>
+                    <usePhrasedClassNameInTestCaseSummary>true</usePhrasedClassNameInTestCaseSummary>
+                </statelessTestsetInfoReporter>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+...
++---+
+
+   Default implementations of these extensions are
+   <<<org.apache.maven.plugin.surefire.extensions.SurefireStatelessReporter>>>,
+   <<<org.apache.maven.plugin.surefire.extensions.SurefireConsoleOutputReporter>>>, and
+   <<<org.apache.maven.plugin.surefire.extensions.SurefireStatelessTestsetInfoReporter>>>.
+
+   The aim of extensions is to let the users customizing the default behavior. We are keen on listing useful
+   extensions on Apache Maven Surefire site if you propagate your extensions on GitHub.
+
