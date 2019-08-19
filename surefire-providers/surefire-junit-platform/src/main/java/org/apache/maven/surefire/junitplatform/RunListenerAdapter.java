@@ -224,7 +224,7 @@ final class RunListenerAdapter
      * @param testIdentifier a class or method
      * @return 4 elements string array
      */
-    public String[] toClassMethodName( TestIdentifier testIdentifier )
+    private String[] toClassMethodName( TestIdentifier testIdentifier )
     {
         Optional<TestSource> testSource = testIdentifier.getSource();
         String display = testIdentifier.getDisplayName();
