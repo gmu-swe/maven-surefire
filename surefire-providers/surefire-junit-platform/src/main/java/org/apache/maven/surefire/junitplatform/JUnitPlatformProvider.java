@@ -174,7 +174,7 @@ public class JUnitPlatformProvider
     private LauncherDiscoveryRequest buildLauncherDiscoveryRequest( TestsToRun testsToRun )
     {
         LauncherDiscoveryRequestBuilder builder =
-                request().filters( filters ).configurationParameters( configurationParameters );
+                    request().filters( filters ).configurationParameters( configurationParameters );
         for ( Class<?> testClass : testsToRun )
         {
             builder.selectors( selectClass( testClass.getName() ) );
