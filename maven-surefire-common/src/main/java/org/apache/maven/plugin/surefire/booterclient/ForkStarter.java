@@ -937,22 +937,8 @@ public class ForkStarter
         @Override
         public InputStream getErrorStream()
         {
-            /* Causes some WILDLY inconsistent behavior, we'll hook this later...
-            try
-            {
-                // Dummy stream
-                if ( clientSocket.isClosed() )
-                {
-                    return new DummyIn();
-                }
-                // Hooked stream for ICP communication
-                return clientSocket.getInputStream();
-            }
-            catch ( IOException e )
-            {
-                throw new IllegalStateException( "Failed to hook InputStream:err" );
-            }
-            */
+            // Cannot share socket with output/input.
+            // However, due to the infrequently of usage this doesn't warrant conversion to sockets.
             return wrapped.getErrorStream();
         }
 
