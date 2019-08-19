@@ -330,12 +330,12 @@ public final class ForkedBooter
         final Semaphore barrier = new Semaphore( 0 );
         commandReader.addByeAckListener( new CommandListener()
                                          {
-                                            @Override
-                                            public void update( Command command )
-                                            {
-                                                barrier.release();
-                                            }
-                                        }
+                                             @Override
+                                             public void update( Command command )
+                                             {
+                                                 barrier.release();
+                                             }
+                                         }
         );
         eventChannel.bye();
         launchLastDitchDaemonShutdownThread( 0 );
