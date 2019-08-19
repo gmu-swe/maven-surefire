@@ -1,5 +1,3 @@
-package junitplatformenginejupiter;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,25 +17,16 @@ package junitplatformenginejupiter;
  * under the License.
  */
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+package dummy;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-// TODO Uncomment after SUREFIRE-1222 is done
-// @DisplayName("<< ✨ >>")
-class DisplayNameTest
+/**
+ *
+ */
+public class DummyClass
 {
-    @Test
-    @DisplayName("73$71 ✔")
-    void test1()
+    @Override
+    public String toString()
     {
-    }
-
-    @Test
-    @DisplayName("73$71 ✔")
-    void test2()
-    {
+        return "JVM handles a file handler to 'surefire-946-dummy-dependency-0.1.jar'.";
     }
 }

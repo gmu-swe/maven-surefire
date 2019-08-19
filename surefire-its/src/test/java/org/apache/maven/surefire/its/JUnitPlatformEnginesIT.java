@@ -19,13 +19,13 @@ package org.apache.maven.surefire.its;
  * under the License.
  */
 
+import com.googlecode.junittoolbox.ParallelParameterized;
 import org.apache.maven.it.VerificationException;
 import org.apache.maven.surefire.its.fixture.OutputValidator;
 import org.apache.maven.surefire.its.fixture.SurefireJUnit4IntegrationTestCase;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
@@ -40,7 +40,7 @@ import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertThat;
 
-@RunWith( Parameterized.class )
+@RunWith( ParallelParameterized.class )
 public class JUnitPlatformEnginesIT
         extends SurefireJUnit4IntegrationTestCase
 {
@@ -57,15 +57,18 @@ public class JUnitPlatformEnginesIT
     public String apiguardian;
 
     @Parameters(name = "{0}")
-    public static Iterable<Object[]> regexVersions()
+    public static Iterable<Object[]> artifactVersions()
     {
         ArrayList<Object[]> args = new ArrayList<>();
         args.add( new Object[] { "1.0.3", "5.0.3", "1.0.0", "1.0.0" } );
         args.add( new Object[] { "1.1.1", "5.1.1", "1.0.0", "1.0.0" } );
         args.add( new Object[] { "1.2.0", "5.2.0", "1.1.0", "1.0.0" } );
         args.add( new Object[] { "1.3.2", "5.3.2", "1.1.1", "1.0.0" } );
-        args.add( new Object[] { "1.4.0-SNAPSHOT", "5.4.0-SNAPSHOT", "1.1.1", "1.0.0" } );
-        args.add( new Object[] { "1.4.0-RC2", "5.4.0-RC2", "1.1.1", "1.0.0" } );
+        args.add( new Object[] { "1.4.2", "5.4.2", "1.1.1", "1.0.0" } );
+        args.add( new Object[] { "1.5.0-RC1", "5.5.0-RC1", "1.2.0", "1.1.0" } );
+        args.add( new Object[] { "1.5.0", "5.5.0", "1.2.0", "1.1.0" } );
+        args.add( new Object[] { "1.5.1", "5.5.1", "1.2.0", "1.1.0" } );
+        args.add( new Object[] { "1.6.0-SNAPSHOT", "5.6.0-SNAPSHOT", "1.2.0", "1.1.0" } );
         return args;
     }
 
