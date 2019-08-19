@@ -185,7 +185,7 @@ public class JUnitPlatformProvider
     private LauncherDiscoveryRequest buildLauncherDiscoveryRequestForRerunFailures( RunListenerAdapter adapter )
     {
         LauncherDiscoveryRequestBuilder builder =
-                request().filters( filters ).configurationParameters( configurationParameters );
+                    request().filters( filters ).configurationParameters( configurationParameters );
             // Iterate over recorded failures
             for ( TestIdentifier identifier : adapter.getFailures().keySet() )
             {
