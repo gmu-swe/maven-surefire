@@ -374,7 +374,7 @@ public final class ForkedBooter
         );
         eventChannel.bye();
         launchLastDitchDaemonShutdownThread( 0 );
-        acquireOnePermit( barrier, timeoutMillis );
+        acquireOnePermit( exitBarrier, timeoutMillis );
         cancelPingScheduler();
         commandReader.stop();
         try
