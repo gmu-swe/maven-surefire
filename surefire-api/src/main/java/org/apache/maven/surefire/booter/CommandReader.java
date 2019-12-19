@@ -26,6 +26,8 @@ import org.apache.maven.surefire.testset.TestSetFailedException;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -62,7 +64,7 @@ public final class CommandReader
 {
     private static final String LAST_TEST_SYMBOL = "";
 
-    private static final CommandReader READER = new CommandReader();
+    private static CommandReader reader;
 
     private final Queue<BiProperty<MasterProcessCommand, CommandListener>> listeners = new ConcurrentLinkedQueue<>();
 
@@ -82,13 +84,34 @@ public final class CommandReader
 
     private volatile ConsoleLogger logger = new NullConsoleLogger();
 
-    private CommandReader()
+    private InputStream inputStream;
+
+    public CommandReader( InputStream inputStream )
     {
+        this.inputStream = inputStream;
+        reader = this;
     }
+
+    public static CommandReader getReader( Socket socket ) throws IOException
+    {
+        // initialize if needed
+        if ( reader == null )
+        {
+            reader = new CommandReader( socket.getInputStream() );
+        }
+        return getReader();
+    }
+
 
     public static CommandReader getReader()
     {
-        final CommandReader reader = READER;
+        // initialize if needed
+        if ( reader == null )
+        {
+            reader = new CommandReader( System.in );
+        }
+        // get and start
+        CommandReader reader = CommandReader.reader;
         if ( reader.state.compareAndSet( NEW, RUNNABLE ) )
         {
             reader.commandThread.start();
@@ -374,10 +397,10 @@ public final class CommandReader
         public void run()
         {
             CommandReader.this.startMonitor.countDown();
-            DataInputStream stdIn = new DataInputStream( System.in );
             boolean isTestSetFinished = false;
             try
             {
+                DataInputStream stdIn = new DataInputStream( inputStream );
                 while ( CommandReader.this.state.get() == RUNNABLE )
                 {
                     Command command = decode( stdIn );

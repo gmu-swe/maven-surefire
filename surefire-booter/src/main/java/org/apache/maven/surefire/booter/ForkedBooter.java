@@ -34,9 +34,11 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.InvocationTargetException;
+import java.net.Socket;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
@@ -70,12 +72,15 @@ public final class ForkedBooter
     private static final String LAST_DITCH_SHUTDOWN_THREAD = "surefire-forkedjvm-last-ditch-daemon-shutdown-thread-";
     private static final String PING_THREAD = "surefire-forkedjvm-ping-";
 
-    private final CommandReader commandReader = CommandReader.getReader();
-    private final ForkedChannelEncoder eventChannel = new ForkedChannelEncoder( System.out );
+    private final CommandReader commandReader;
+    private final ForkedChannelEncoder eventChannel;
     private final Semaphore exitBarrier = new Semaphore( 0 );
 
     private volatile long systemExitTimeoutInSeconds = DEFAULT_SYSTEM_EXIT_TIMEOUT_IN_SECONDS;
+    private long timeoutMillis;
     private volatile PingScheduler pingScheduler;
+    private final Socket clientSocket;
+
 
     private ScheduledThreadPoolExecutor jvmTerminator;
     private ProviderConfiguration providerConfiguration;
@@ -83,8 +88,16 @@ public final class ForkedBooter
     private StartupConfiguration startupConfiguration;
     private Object testSet;
 
+    private ForkedBooter( Socket clientSocket ) throws IOException
+    {
+        this.clientSocket = clientSocket;
+        commandReader = CommandReader.getReader( clientSocket );
+        eventChannel = new ForkedChannelEncoder( clientSocket.getOutputStream() );
+        timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
+    }
+
     private void setupBooter( String tmpDir, String dumpFileName, String surefirePropsFileName,
-                              String effectiveSystemPropertiesFileName )
+                              String effectiveSystemPropertiesFileName, String singleTestClassName )
             throws IOException
     {
         BooterDeserializer booterDeserializer =
@@ -124,8 +137,15 @@ public final class ForkedBooter
 
         ClassLoader classLoader = currentThread().getContextClassLoader();
         classLoader.setDefaultAssertionStatus( classpathConfiguration.isEnableAssertions() );
-        boolean readTestsFromCommandReader = providerConfiguration.isReadTestsFromInStream();
-        testSet = createTestSet( providerConfiguration.getTestForFork(), readTestsFromCommandReader, classLoader );
+        if ( singleTestClassName != null )
+        {
+            testSet = createTestSet( singleTestClassName, classLoader );
+        }
+        else
+        {
+            boolean readTestsFromCommandReader = providerConfiguration.isReadTestsFromInStream();
+            testSet = createTestSet( providerConfiguration.getTestForFork(), readTestsFromCommandReader, classLoader );
+        }
     }
 
     private void execute()
@@ -148,6 +168,18 @@ public final class ForkedBooter
         finally
         {
             acknowledgedExit();
+        }
+    }
+
+    private Object createTestSet( String singleTestClassName, ClassLoader cl )
+    {
+        try
+        {
+            return cl.loadClass( singleTestClassName );
+        }
+        catch ( Exception ex )
+        {
+            throw new IllegalStateException( "Passed test class does not exist: " + singleTestClassName );
         }
     }
 
@@ -355,10 +387,17 @@ public final class ForkedBooter
         );
         eventChannel.bye();
         launchLastDitchDaemonShutdownThread( 0 );
-        long timeoutMillis = max( systemExitTimeoutInSeconds * ONE_SECOND_IN_MILLIS, ONE_SECOND_IN_MILLIS );
         acquireOnePermit( exitBarrier, timeoutMillis );
         cancelPingScheduler();
         commandReader.stop();
+        try
+        {
+            clientSocket.close();
+        }
+        catch ( Exception e )
+        {
+
+        }
         System.exit( 0 );
     }
 
@@ -438,29 +477,40 @@ public final class ForkedBooter
      */
     public static void main( String[] args )
     {
-        ForkedBooter booter = new ForkedBooter();
-        run( booter, args );
-    }
-
-    /**
-     * created for testing purposes.
-     *
-     * @param booter booter in JVM
-     * @param args arguments passed to JVM
-     */
-    private static void run( ForkedBooter booter, String[] args )
-    {
+        CmdParser parser = new CmdParser( args );
+        if ( !parser.parse() )
+        {
+            throw new IllegalStateException( "Invalid arguments given: " + Arrays.toString( args ) );
+        }
+        String tmpDir = parser.getIndexArg( 0 );
+        String dumpFileName = parser.getIndexArg( 1 );
+        String surefirePropsName = parser.getIndexArg( 2 );
+        int forkStarterPort = Integer.parseInt( parser.getIndexArg( 3 ) );
+        String effectiveSystemPropertiesFile = parser.getOptionalArg( "props" );
+        String singleTestClassName = parser.getOptionalArg( "testClass" );
         try
         {
-            booter.setupBooter( args[0], args[1], args[2], args.length > 3 ? args[3] : null );
-            booter.execute();
+            Socket clientSocket = new Socket( "127.0.0.1", forkStarterPort );
+            clientSocket.setTcpNoDelay( true );
+            ForkedBooter booter = new ForkedBooter( clientSocket );
+            try
+            {
+                booter.setupBooter( tmpDir, dumpFileName, surefirePropsName,
+                        effectiveSystemPropertiesFile, singleTestClassName );
+                booter.execute();
+            }
+            catch ( Throwable t )
+            {
+                DumpErrorSingleton.getSingleton().dumpException( t );
+                t.printStackTrace();
+                booter.cancelPingScheduler();
+                booter.exit1();
+            }
         }
-        catch ( Throwable t )
+        catch ( IOException e )
         {
-            DumpErrorSingleton.getSingleton().dumpException( t );
-            t.printStackTrace();
-            booter.cancelPingScheduler();
-            booter.exit1();
+            DumpErrorSingleton.getSingleton().dumpException( e );
+            e.printStackTrace();
         }
     }
 
