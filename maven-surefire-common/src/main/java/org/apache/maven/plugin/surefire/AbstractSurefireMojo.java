@@ -83,6 +83,7 @@ import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
 import org.apache.maven.surefire.testset.TestSetFailedException;
 import org.apache.maven.surefire.util.DefaultScanResult;
+import org.apache.maven.surefire.util.MethodRunOrder;
 import org.apache.maven.surefire.util.RunOrder;
 import org.apache.maven.toolchain.DefaultToolchain;
 import org.apache.maven.toolchain.Toolchain;
@@ -820,6 +821,12 @@ public abstract class AbstractSurefireMojo
 
     public abstract void setRunOrder( String runOrder );
 
+    public abstract String getMethodRunOrder();
+
+    public abstract long getRandomSeed();
+
+    public abstract void setRandomSeed( long seed );
+
     protected abstract void handleSummary( RunResult summary, Exception firstForkException )
         throws MojoExecutionException, MojoFailureException;
 
@@ -1039,6 +1046,7 @@ public abstract class AbstractSurefireMojo
             warnIfWrongShutdownValue();
             warnIfNotApplicableSkipAfterFailureCount();
             warnIfIllegalTempDir();
+            printDefaultSeedIfNecessary();
         }
         return true;
     }
@@ -1183,7 +1191,8 @@ public abstract class AbstractSurefireMojo
         ClassLoaderConfiguration classLoaderConfiguration = getClassLoaderConfiguration();
         provider.addProviderProperties();
         RunOrderParameters runOrderParameters =
-            new RunOrderParameters( getRunOrder(), getStatisticsFile( getConfigChecksum() ) );
+            new RunOrderParameters( getRunOrder(), getStatisticsFile( getConfigChecksum() ), getRandomSeed(),
+                getMethodRunOrder() );
 
         Platform platform = PLATFORM.withJdkExecAttributesForTests( getEffectiveJvm() );
         if ( isNotForking() )
@@ -2553,6 +2562,7 @@ public abstract class AbstractSurefireMojo
         checksum.add( getObjectFactory() );
         checksum.add( getFailIfNoTests() );
         checksum.add( getRunOrder() );
+        checksum.add( getMethodRunOrder().toString() );
         checksum.add( getDependenciesToScan() );
         checksum.add( getForkedProcessExitTimeoutInSeconds() );
         checksum.add( getRerunFailingTestsCount() );
@@ -2858,6 +2868,19 @@ public abstract class AbstractSurefireMojo
         {
             throw new MojoFailureException( "Parameter 'tempDir' should not be blank string." );
         }
+    }
+
+    private void printDefaultSeedIfNecessary()
+    {
+        if ( getRandomSeed() == 0 && ( getRunOrder().equals( RunOrder.RANDOM.name() ) || getMethodRunOrder().equals(
+            MethodRunOrder.RANDOM.name() ) ) )
+        {
+            setRandomSeed( System.nanoTime() );
+            getConsoleLogger().info(
+                "Tests will run in random order. To reproduce ordering use flag -D"
+                    + getPluginName() + ".seed=" + getRandomSeed() );
+        }
+
     }
 
     final class TestNgProviderInfo

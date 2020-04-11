@@ -590,6 +590,24 @@ public class AbstractSurefireMojoJava7PlusTest
         }
 
         @Override
+        public String getMethodRunOrder()
+        {
+            return null;
+        }
+
+        @Override
+        public long getRandomSeed()
+        {
+            return 0;
+        }
+
+        @Override
+        public void setRandomSeed( long seed )
+        {
+
+        }
+
+        @Override
         protected void handleSummary( RunResult summary, Exception firstForkException )
         {
 

@@ -30,6 +30,7 @@ import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestArtifactInfo;
 import org.apache.maven.surefire.testset.TestListResolver;
 import org.apache.maven.surefire.testset.TestRequest;
+import org.apache.maven.surefire.util.MethodRunOrder;
 import org.apache.maven.surefire.util.RunOrder;
 import org.mockito.ArgumentCaptor;
 
@@ -112,7 +113,8 @@ public class SurefireReflectorTest
         SurefireReflector surefireReflector = getReflector();
         Object foo = getFoo();
 
-        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, new File( "." ) );
+        RunOrderParameters runOrderParameters = new RunOrderParameters( RunOrder.DEFAULT, new File( "." ), 0L,
+            MethodRunOrder.DEFAULT );
         surefireReflector.setRunOrderParameters( foo, runOrderParameters );
         assertTrue( isCalled( foo ) );
     }

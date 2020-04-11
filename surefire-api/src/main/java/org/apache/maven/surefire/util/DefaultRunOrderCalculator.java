@@ -26,8 +26,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Applies the final runorder of the tests
@@ -45,12 +47,16 @@ public class DefaultRunOrderCalculator
 
     private final int threadCount;
 
+    private final Random random;
+
+
     public DefaultRunOrderCalculator( RunOrderParameters runOrderParameters, int threadCount )
     {
         this.runOrderParameters = runOrderParameters;
         this.threadCount = threadCount;
         this.runOrder = runOrderParameters.getRunOrder();
         this.sortOrder = this.runOrder.length > 0 ? getSortOrderComparator( this.runOrder[0] ) : null;
+        this.random = new Random( runOrderParameters.getRandomSeed() );
     }
 
     @Override
@@ -68,11 +74,75 @@ public class DefaultRunOrderCalculator
         return new TestsToRun( new LinkedHashSet<>( result ) );
     }
 
+    @Override
+    public Comparator<String> comparatorForTestMethods()
+    {
+        MethodRunOrder order = runOrderParameters.getMethodRunOrder();
+        if ( MethodRunOrder.DEFAULT.equals( order ) )
+        {
+            return null;
+        }
+        else if ( MethodRunOrder.ALPHABETICAL.equals( order ) )
+        {
+            return new Comparator<String>()
+            {
+                @Override
+                public int compare( String o1, String o2 )
+                {
+                    return o1.compareTo( o2 );
+                }
+            };
+        }
+        else if ( MethodRunOrder.REVERSE_ALPHABETICAL.equals( order ) )
+        {
+            return new Comparator<String>()
+            {
+                @Override
+                public int compare( String o1, String o2 )
+                {
+                    return o2.compareTo( o1 );
+                }
+            };
+        }
+        else if ( MethodRunOrder.RANDOM.equals( order ) )
+        {
+            return new Comparator<String>()
+            {
+                HashMap<String, Integer> randomVals = new HashMap<>();
+
+                private int getRandom( String obj )
+                {
+                    if ( !randomVals.containsKey( obj ) )
+                    {
+                        randomVals.put( obj, random.nextInt() );
+                    }
+                    return randomVals.get( obj );
+                }
+
+                @Override
+                public int compare( String o1, String o2 )
+                {
+                    int i1 = getRandom( o1 );
+                    int i2 = getRandom( o2 );
+                    return ( i1 > i2 ? 1 : -1 );
+                }
+            };
+        }
+        else if ( MethodRunOrder.FLAKY_FINDING.equals( order ) )
+        {
+            throw new UnsupportedOperationException( "Unimplemented" );
+        }
+        else
+        {
+            throw new UnsupportedOperationException( "Unsupported method run order: " + order.name() );
+        }
+    }
+
     private void orderTestClasses( List<Class<?>> testClasses, RunOrder runOrder )
     {
         if ( RunOrder.RANDOM.equals( runOrder ) )
         {
-            Collections.shuffle( testClasses );
+            Collections.shuffle( testClasses, random );
         }
         else if ( RunOrder.FAILEDFIRST.equals( runOrder ) )
         {

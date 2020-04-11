@@ -19,8 +19,10 @@ package org.apache.maven.surefire.testset;
  * under the License.
  */
 
-import java.io.File;
+import org.apache.maven.surefire.util.MethodRunOrder;
 import org.apache.maven.surefire.util.RunOrder;
+
+import java.io.File;
 
 /**
  * @author Kristian Rosenvold
@@ -31,21 +33,30 @@ public class RunOrderParameters
 
     private File runStatisticsFile;
 
-    public RunOrderParameters( RunOrder[] runOrder, File runStatisticsFile )
+    private final MethodRunOrder methodRunOrder;
+
+    private final long randomSeed;
+
+    public RunOrderParameters( RunOrder[] runOrder, File runStatisticsFile, long randomSeed,
+                               MethodRunOrder methodRunOrder )
     {
         this.runOrder = runOrder;
         this.runStatisticsFile = runStatisticsFile;
+        this.methodRunOrder = methodRunOrder;
+        this.randomSeed = randomSeed;
     }
 
-    public RunOrderParameters( String runOrder, File runStatisticsFile )
+    public RunOrderParameters( String runOrder, File runStatisticsFile, long randomSeed, String methodRunOrder )
     {
         this.runOrder = runOrder == null ? RunOrder.DEFAULT : RunOrder.valueOfMulti( runOrder );
         this.runStatisticsFile = runStatisticsFile;
+        this.methodRunOrder = MethodRunOrder.valueOf( methodRunOrder );
+        this.randomSeed = randomSeed;
     }
 
     public static RunOrderParameters alphabetical()
     {
-        return new RunOrderParameters( new RunOrder[]{ RunOrder.ALPHABETICAL }, null );
+        return new RunOrderParameters( new RunOrder[]{ RunOrder.ALPHABETICAL }, null, 0, MethodRunOrder.DEFAULT );
     }
 
     public RunOrder[] getRunOrder()
@@ -56,6 +67,16 @@ public class RunOrderParameters
     public File getRunStatisticsFile()
     {
         return runStatisticsFile;
+    }
+
+    public MethodRunOrder getMethodRunOrder()
+    {
+        return methodRunOrder;
+    }
+
+    public long getRandomSeed()
+    {
+        return randomSeed;
     }
 
 }

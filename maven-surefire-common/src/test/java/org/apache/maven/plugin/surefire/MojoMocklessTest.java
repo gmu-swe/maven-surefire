@@ -709,6 +709,24 @@ public class MojoMocklessTest
         }
 
         @Override
+        public String getMethodRunOrder()
+        {
+            return null;
+        }
+
+        @Override
+        public long getRandomSeed()
+        {
+            return 0;
+        }
+
+        @Override
+        public void setRandomSeed( long seed )
+        {
+
+        }
+
+        @Override
         public String[] getDependenciesToScan()
         {
             return dependenciesToScan;

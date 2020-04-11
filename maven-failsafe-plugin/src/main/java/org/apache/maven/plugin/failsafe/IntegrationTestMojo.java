@@ -309,6 +309,14 @@ public class IntegrationTestMojo
     @Parameter( property = "failsafe.runOrder", defaultValue = "filesystem" )
     private String runOrder;
 
+    //TODO docs
+    @Parameter( property = "failsafe.methodRunOrder", defaultValue = "default" )
+    private String methodRunOrder;
+
+    @Parameter( property = "failsafe.seed" )
+    private long randomSeed;
+
+
     /**
      * A file containing include patterns, each in a next line. Blank lines, or lines starting with # are ignored.
      * If {@code includes} are also specified, these patterns are appended. Example with path, simple and regex
@@ -873,6 +881,24 @@ public class IntegrationTestMojo
     public void setRunOrder( String runOrder )
     {
         this.runOrder = runOrder;
+    }
+
+    @Override
+    public long getRandomSeed()
+    {
+        return randomSeed;
+    }
+
+    @Override
+    public void setRandomSeed( long randomSeed )
+    {
+        this.randomSeed = randomSeed;
+    }
+
+    @Override
+    public String getMethodRunOrder()
+    {
+        return methodRunOrder;
     }
 
     @Override

@@ -292,6 +292,14 @@ public class SurefirePlugin
     @Parameter( property = "surefire.runOrder", defaultValue = "filesystem" )
     private String runOrder;
 
+
+    //TODO docs
+    @Parameter( property = "surefire.methodRunOrder", defaultValue = "default" )
+    private String methodRunOrder;
+
+    @Parameter( property = "surefire.seed" )
+    private long randomSeed;
+
     /**
      * A file containing include patterns. Blank lines, or lines starting with # are ignored. If {@code includes} are
      * also specified, these patterns are appended. Example with path, simple and regex includes:
@@ -773,10 +781,29 @@ public class SurefirePlugin
     }
 
     @Override
+    public long getRandomSeed()
+    {
+        return randomSeed;
+    }
+
+    @Override
+    public void setRandomSeed( long randomSeed )
+    {
+        this.randomSeed = randomSeed;
+    }
+
+    @Override
     @SuppressWarnings( "UnusedDeclaration" )
     public void setRunOrder( String runOrder )
     {
         this.runOrder = runOrder;
+    }
+
+
+    @Override
+    public String getMethodRunOrder()
+    {
+        return methodRunOrder;
     }
 
     @Override

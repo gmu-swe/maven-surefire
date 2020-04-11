@@ -54,7 +54,9 @@ import org.apache.maven.surefire.report.ReporterConfiguration;
 import org.apache.maven.surefire.report.ReporterFactory;
 import org.apache.maven.surefire.report.RunListener;
 import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.testset.RunOrderParameters;
 import org.apache.maven.surefire.testset.TestSetFailedException;
+import org.apache.maven.surefire.util.DefaultRunOrderCalculator;
 import org.apache.maven.surefire.util.TestsToRun;
 
 import org.junit.Rule;
@@ -137,7 +139,9 @@ public class Surefire746Test
             exception.expect( TestSetFailedException.class );
             JUnit4RunListener dummy = new JUnit4RunListener( new MockReporter() );
             new JUnitCoreWrapper( new Notifier( dummy, 0 ), jUnitCoreParameters,
-                    new DefaultDirectConsoleReporter( System.out ) ).execute( testsToRun, customRunListeners, null );
+                new DefaultDirectConsoleReporter( System.out ),
+                new DefaultRunOrderCalculator( RunOrderParameters.alphabetical(), 1 ) ).
+                execute( testsToRun, customRunListeners, null );
         }
         finally
         {
