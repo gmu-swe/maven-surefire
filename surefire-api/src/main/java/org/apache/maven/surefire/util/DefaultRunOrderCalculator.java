@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -130,7 +131,51 @@ public class DefaultRunOrderCalculator
         }
         else if ( MethodRunOrder.FLAKY_FINDING.equals( order ) )
         {
-            throw new UnsupportedOperationException( "Unimplemented" );
+            String orderParam = System.getProperty( "flakyTestOrder" );
+            if ( orderParam == null )
+            {
+                throw new IllegalStateException( "Please set system property flakyTestOrder to use flaky finding" );
+            }
+            final HashMap<String, Integer> orders = new HashMap<>();
+            int i = 0;
+            for ( String s : orderParam.split( "," ) )
+            {
+                orders.put( s, i );
+                i++;
+                if ( i > 2 )
+                {
+                    throw new UnsupportedOperationException( "This only supports 2 tests at a time for now." );
+                }
+            }
+            return new Comparator<String>()
+            {
+                int getRank( String o )
+                {
+                    synchronized ( orders )
+                    {
+                        if ( !orders.containsKey( o ) )
+                        {
+                            orders.put( o, orders.size() );
+                        }
+                        return orders.get( o );
+                    }
+                }
+
+                @Override
+                public int compare( String o1, String o2 )
+                {
+                    int r1 = getRank( o1 );
+                    int r2 = getRank( o2 );
+                    if ( r1 < r2 )
+                    {
+                        return -1;
+                    }
+                    else
+                    {
+                        return 1;
+                    }
+                }
+            };
         }
         else
         {
@@ -140,7 +185,13 @@ public class DefaultRunOrderCalculator
 
     private void orderTestClasses( List<Class<?>> testClasses, RunOrder runOrder )
     {
-        if ( RunOrder.RANDOM.equals( runOrder ) )
+        if ( System.getProperty( "flakyTestOrder" ) != null )
+        {
+            List<Class<?>> sorted = sortClassesBySpecifiedOrder( testClasses, System.getProperty( "flakyTestOrder" ) );
+            testClasses.clear();
+            testClasses.addAll( sorted );
+        }
+        else if ( RunOrder.RANDOM.equals( runOrder ) )
         {
             Collections.shuffle( testClasses, random );
         }
@@ -164,6 +215,26 @@ public class DefaultRunOrderCalculator
         {
             Collections.sort( testClasses, sortOrder );
         }
+    }
+
+    private List<Class<?>> sortClassesBySpecifiedOrder( List<Class<?>> testClasses, String flakyTestOrder )
+    {
+        HashMap<String, Class<?>> classes = new HashMap<>();
+        for ( Class<?> each : testClasses )
+        {
+            classes.put( each.getName(), each );
+        }
+        LinkedList<Class<?>> ret = new LinkedList<>();
+        for ( String s : flakyTestOrder.split( "," ) )
+        {
+            String testClass = s.substring( s.indexOf( '(' ) + 1, s.length() - 1 );
+            Class<?> c = classes.remove( testClass );
+            if ( c != null )
+            {
+                ret.add( c );
+            }
+        }
+        return ret;
     }
 
     private Comparator<Class> getSortOrderComparator( RunOrder runOrder )
