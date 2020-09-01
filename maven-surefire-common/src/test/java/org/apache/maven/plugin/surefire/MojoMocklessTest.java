@@ -28,8 +28,9 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.surefire.extensions.SurefireConsoleOutputReporter;
 import org.apache.maven.plugin.surefire.extensions.SurefireStatelessReporter;
 import org.apache.maven.plugin.surefire.extensions.SurefireStatelessTestsetInfoReporter;
-import org.apache.maven.surefire.suite.RunResult;
-import org.apache.maven.surefire.util.DefaultScanResult;
+import org.apache.maven.surefire.extensions.ForkNodeFactory;
+import org.apache.maven.surefire.api.suite.RunResult;
+import org.apache.maven.surefire.api.util.DefaultScanResult;
 import org.apache.maven.toolchain.Toolchain;
 import org.junit.Test;
 
@@ -451,13 +452,13 @@ public class MojoMocklessTest
         }
 
         @Override
-        public File getClassesDirectory()
+        public File getMainBuildPath()
         {
             return null;
         }
 
         @Override
-        public void setClassesDirectory( File classesDirectory )
+        public void setMainBuildPath( File mainBuildPath )
         {
 
         }
@@ -766,6 +767,12 @@ public class MojoMocklessTest
         protected void setUseModulePath( boolean useModulePath )
         {
 
+        }
+
+        @Override
+        protected ForkNodeFactory getForkNode()
+        {
+            return null;
         }
 
         @Override

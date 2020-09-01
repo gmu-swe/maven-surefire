@@ -19,8 +19,6 @@ package org.apache.maven.surefire.its;
  * under the License.
  */
 
-import java.util.Collection;
-
 import com.googlecode.junittoolbox.ParallelParameterized;
 import org.apache.maven.surefire.its.fixture.SurefireJUnit4IntegrationTestCase;
 import org.apache.maven.surefire.its.fixture.SurefireLauncher;
@@ -28,19 +26,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized.Parameter;
 
+import java.util.Collection;
+
 import static java.util.Arrays.asList;
+import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_0;
+import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_1;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_10;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_11;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_12;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_13;
-import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_8;
-import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_8_1;
-import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_8_2;
-import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_9;
-import static org.junit.runners.Parameterized.Parameters;
-
-import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_0;
-import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_1;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_2;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_3;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_3_1;
@@ -48,6 +42,11 @@ import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_4;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_5;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_6;
 import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_7;
+import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_8;
+import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_8_1;
+import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_8_2;
+import static org.apache.maven.surefire.its.JUnitVersion.JUNIT_4_9;
+import static org.junit.runners.Parameterized.Parameters;
 
 /**
  * Basic suite test using all known versions of JUnit 4.x

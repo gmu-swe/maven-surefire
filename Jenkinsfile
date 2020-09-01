@@ -21,16 +21,16 @@
 
 properties(
     [
-        buildDiscarder(logRotator(artifactDaysToKeepStr: env.BRANCH_NAME == 'master' ? '1' : '2',
+        buildDiscarder(logRotator(artifactDaysToKeepStr: env.BRANCH_NAME == 'master' ? '14' : '7',
                                   artifactNumToKeepStr: '50',
-                                  daysToKeepStr: env.BRANCH_NAME == 'master' ? '10' : '5',
-                                  numToKeepStr: env.BRANCH_NAME == 'master' ? '5' : '3')
+                                  daysToKeepStr: env.BRANCH_NAME == 'master' ? '30' : '14',
+                                  numToKeepStr: env.BRANCH_NAME == 'master' ? '20' : '10')
         ),
         disableConcurrentBuilds()
     ]
 )
 
-final def oses = ['linux':'ubuntu && !H23 && !H24 && !H29 && !H30 && !H40 && !H41', 'windows':'Windows']
+final def oses = ['linux':'ubuntu', 'windows':'Windows']
 final def mavens = env.BRANCH_NAME == 'master' ? ['3.6.x', '3.2.x'] : ['3.6.x']
 // all non-EOL versions and the first EA
 final def jdks = [15, 14, 11, 8, 7]
@@ -120,6 +120,7 @@ timeout(time: 12, unit: 'HOURS') {
 }
 
 def buildProcess(String stageKey, String jdkName, String jdkTestName, String mvnName, goals, options, mavenOpts, boolean makeReports) {
+    cleanWs()
     try {
         def mvnLocalRepoDir
         if (isUnix()) {
@@ -169,38 +170,41 @@ def buildProcess(String stageKey, String jdkName, String jdkTestName, String mvn
             }
         }
     } finally {
-        if (makeReports) {
-            openTasks(ignoreCase: true, canComputeNew: true, defaultEncoding: 'UTF-8', pattern: sourcesPatternCsv(),
-                    high: tasksViolationHigh(), normal: tasksViolationNormal(), low: tasksViolationLow())
+        try {
+            if (makeReports) {
+                openTasks(ignoreCase: true, canComputeNew: true, defaultEncoding: 'UTF-8', pattern: sourcesPatternCsv(),
+                        high: tasksViolationHigh(), normal: tasksViolationNormal(), low: tasksViolationLow())
 
-            jacoco(changeBuildStatus: false,
-                    execPattern: '**/*.exec',
-                    sourcePattern: sourcesPatternCsv(),
-                    classPattern: classPatternCsv())
+                jacoco(changeBuildStatus: false,
+                        execPattern: '**/*.exec',
+                        sourcePattern: sourcesPatternCsv(),
+                        classPattern: classPatternCsv())
 
-            junit(healthScaleFactor: 0.0,
-                    allowEmptyResults: true,
-                    keepLongStdio: true,
-                    testResults: testReportsPatternCsv())
+                junit(healthScaleFactor: 0.0,
+                        allowEmptyResults: true,
+                        keepLongStdio: true,
+                        testResults: testReportsPatternCsv())
 
-            if (currentBuild.result == 'UNSTABLE') {
-                currentBuild.result = 'FAILURE'
+                if (currentBuild.result == 'UNSTABLE') {
+                    currentBuild.result = 'FAILURE'
+                }
             }
+
+            if (currentBuild.result != null && currentBuild.result != 'SUCCESS') {
+                if (fileExists('maven-failsafe-plugin/target/it')) {
+                    zip(zipFile: "maven-failsafe-plugin--${stageKey}.zip", dir: 'maven-failsafe-plugin/target/it', archive: true)
+                }
+
+                if (fileExists('surefire-its/target')) {
+                    zip(zipFile: "surefire-its--${stageKey}.zip", dir: 'surefire-its/target', archive: true)
+                }
+
+                archiveArtifacts(artifacts: "*--${stageKey}.zip", allowEmptyArchive: true, onlyIfSuccessful: false)
+            }
+        } finally {
+            // clean up after ourselves to reduce disk space
+            cleanWs()
         }
-
-        if (currentBuild.result != null && currentBuild.result != 'SUCCESS') {
-            if (fileExists('maven-failsafe-plugin/target/it')) {
-                zip(zipFile: "maven-failsafe-plugin--${stageKey}.zip", dir: 'maven-failsafe-plugin/target/it', archive: true)
-            }
-
-            if (fileExists('surefire-its/target')) {
-                zip(zipFile: "surefire-its--${stageKey}.zip", dir: 'surefire-its/target', archive: true)
-            }
-
-            archiveArtifacts(artifacts: "*--${stageKey}.zip", allowEmptyArchive: true, onlyIfSuccessful: false)
-        }
-        // clean up after ourselves to reduce disk space
-        cleanWs()
     }
 }
 
@@ -213,6 +217,7 @@ static def sourcesPatternCsv() {
             '**/surefire-api/src/main/java,' +
             '**/surefire-booter/src/main/java,' +
             '**/surefire-extensions-api/src/main/java,' +
+            '**/surefire-extensions-spi/src/main/java,' +
             '**/surefire-grouper/src/main/java,' +
             '**/surefire-its/src/main/java,' +
             '**/surefire-logger-api/src/main/java,' +
@@ -229,6 +234,7 @@ static def classPatternCsv() {
             '**/surefire-api/target/classes,' +
             '**/surefire-booter/target/classes,' +
             '**/surefire-extensions-api/target/classes,' +
+            '**/surefire-extensions-spi/target/classes,' +
             '**/surefire-grouper/target/classes,' +
             '**/surefire-its/target/classes,' +
             '**/surefire-logger-api/target/classes,' +

@@ -38,10 +38,13 @@
       <item name="Download" href="../download.html"/>
     </menu>
     <menu name="Examples">
+      <item name="Java Modularity (JPMS) in Tests" href="examples/jpms.html"/>
+      <item name="TCP/IP Communication between Forks" href="examples/process-communication.html"/>
       <item name="Using TestNG" href="examples/testng.html"/>
       <item name="Using JUnit" href="examples/junit.html"/>
       <item name="Using JUnit 5 Platform" href="examples/junit-platform.html"/>
       <item name="Using POJO Tests" href="examples/pojo-test.html"/>
+      <item name="Using Spock" href="examples/spock.html"/>
       <item name="Using Cucumber" href="examples/cucumber.html"/>
       <item name="Special characters in directories" href="examples/cwd.html"/>
       <item name="Skipping Tests" href="examples/skipping-tests.html"/>
@@ -61,6 +64,7 @@
       <item name="Shutdown of Forked JVM" href="examples/shutdown.html"/>
       <item name="Run tests with Java 9" href="java9.html"/>
       <item name="Run tests in Docker" href="docker.html"/>
+      <item name="Run tests in a different JVM using toolchains" href="examples/toolchains.html"/>
     </menu>
   </body>
 </project>

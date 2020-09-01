@@ -28,9 +28,9 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 
 import static org.apache.maven.surefire.its.fixture.SurefireJUnit4IntegrationTestCase.unpack;
+import static org.junit.Assert.fail;
 import static org.junit.runners.Parameterized.Parameter;
 import static org.junit.runners.Parameterized.Parameters;
-import static org.junit.Assert.fail;
 
 /**
  * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>

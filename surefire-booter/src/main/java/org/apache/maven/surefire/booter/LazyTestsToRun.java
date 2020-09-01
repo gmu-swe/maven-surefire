@@ -22,11 +22,12 @@ package org.apache.maven.surefire.booter;
 import java.util.Collections;
 import java.util.Iterator;
 
-import org.apache.maven.surefire.util.CloseableIterator;
-import org.apache.maven.surefire.util.TestsToRun;
+import org.apache.maven.surefire.api.booter.MasterProcessChannelEncoder;
+import org.apache.maven.surefire.api.provider.SurefireProvider;
+import org.apache.maven.surefire.api.util.CloseableIterator;
+import org.apache.maven.surefire.api.util.TestsToRun;
 
-import static org.apache.maven.surefire.booter.CommandReader.getReader;
-import static org.apache.maven.surefire.util.ReflectionUtils.loadClass;
+import static org.apache.maven.surefire.api.util.ReflectionUtils.loadClass;
 
 /**
  * A variant of TestsToRun that is provided with test class names
@@ -35,7 +36,7 @@ import static org.apache.maven.surefire.util.ReflectionUtils.loadClass;
  * {@link Iterator#hasNext()} or {@link Iterator#next()} until new classes are available, or no more
  * classes will be available or the internal stream is closed.
  * The iterator can be used only in one Thread and it is the thread which executes
- * {@link org.apache.maven.surefire.providerapi.SurefireProvider provider implementation}.
+ * {@link SurefireProvider provider implementation}.
  *
  * @author Andreas Gudian
  * @author Tibor Digana
@@ -43,24 +44,25 @@ import static org.apache.maven.surefire.util.ReflectionUtils.loadClass;
 final class LazyTestsToRun
     extends TestsToRun
 {
-    private final ForkedChannelEncoder eventChannel;
+    private final MasterProcessChannelEncoder eventChannel;
+    private final CommandReader commandReader;
 
     /**
      * C'tor
      *
      * @param eventChannel the output stream to use when requesting new new tests
      */
-    LazyTestsToRun( ForkedChannelEncoder eventChannel )
+    LazyTestsToRun( MasterProcessChannelEncoder eventChannel, CommandReader commandReader )
     {
         super( Collections.<Class<?>>emptySet() );
-
         this.eventChannel = eventChannel;
+        this.commandReader = commandReader;
     }
 
     private final class BlockingIterator
         implements Iterator<Class<?>>
     {
-        private final Iterator<String> it = getReader().getIterableClasses( eventChannel ).iterator();
+        private final Iterator<String> it = commandReader.getIterableClasses( eventChannel ).iterator();
 
         @Override
         public boolean hasNext()
@@ -93,7 +95,7 @@ final class LazyTestsToRun
     /**
      * The iterator can be used only in one Thread.
      * {@inheritDoc}
-     * @see org.apache.maven.surefire.util.TestsToRun#iterator()
+     * @see TestsToRun#iterator()
      * */
     @Override
     public Iterator<Class<?>> iterator()
@@ -132,7 +134,7 @@ final class LazyTestsToRun
      */
     private Iterator<Class<?>> newWeakIterator()
     {
-        final Iterator<String> it = getReader().iterated();
+        final Iterator<String> it = commandReader.iterated();
         return new CloseableIterator<Class<?>>()
         {
             @Override

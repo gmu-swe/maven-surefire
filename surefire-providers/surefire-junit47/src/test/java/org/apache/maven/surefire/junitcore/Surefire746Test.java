@@ -44,20 +44,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.maven.surefire.booter.BaseProviderFactory;
-import org.apache.maven.surefire.booter.ProviderParameterNames;
+import org.apache.maven.surefire.api.booter.BaseProviderFactory;
+import org.apache.maven.surefire.api.booter.ProviderParameterNames;
+import org.apache.maven.surefire.api.testset.RunOrderParameters;
+import org.apache.maven.surefire.api.util.DefaultRunOrderCalculator;
 import org.apache.maven.surefire.common.junit4.JUnit4RunListener;
 import org.apache.maven.surefire.common.junit4.Notifier;
-import org.apache.maven.surefire.junit4.MockReporter;
-import org.apache.maven.surefire.report.DefaultDirectConsoleReporter;
-import org.apache.maven.surefire.report.ReporterConfiguration;
-import org.apache.maven.surefire.report.ReporterFactory;
-import org.apache.maven.surefire.report.RunListener;
-import org.apache.maven.surefire.suite.RunResult;
-import org.apache.maven.surefire.testset.RunOrderParameters;
-import org.apache.maven.surefire.testset.TestSetFailedException;
-import org.apache.maven.surefire.util.DefaultRunOrderCalculator;
-import org.apache.maven.surefire.util.TestsToRun;
+import org.apache.maven.surefire.api.report.DefaultDirectConsoleReporter;
+import org.apache.maven.surefire.api.report.ReporterConfiguration;
+import org.apache.maven.surefire.api.report.ReporterFactory;
+import org.apache.maven.surefire.api.report.RunListener;
+import org.apache.maven.surefire.api.suite.RunResult;
+import org.apache.maven.surefire.api.testset.TestSetFailedException;
+import org.apache.maven.surefire.api.util.TestsToRun;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -112,7 +111,8 @@ public class Surefire746Test
     public void surefireIsConfused_ByMultipleIgnore_OnClassLevel() throws Exception
     {
         ReporterFactory reporterFactory = JUnitCoreTester.defaultNoXml();
-        BaseProviderFactory providerParameters = new BaseProviderFactory( reporterFactory, true );
+        BaseProviderFactory providerParameters = new BaseProviderFactory( true );
+        providerParameters.setReporterFactory( reporterFactory );
 
         providerParameters.setReporterConfiguration( new ReporterConfiguration( new File( "" ), false ) );
         Map<String, String> junitProps = new HashMap<>();

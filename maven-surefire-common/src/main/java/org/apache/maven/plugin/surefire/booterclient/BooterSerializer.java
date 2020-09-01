@@ -26,14 +26,14 @@ import org.apache.maven.surefire.booter.KeyValueSource;
 import org.apache.maven.surefire.booter.ProcessCheckerType;
 import org.apache.maven.surefire.booter.ProviderConfiguration;
 import org.apache.maven.surefire.booter.StartupConfiguration;
-import org.apache.maven.surefire.cli.CommandLineOption;
-import org.apache.maven.surefire.report.ReporterConfiguration;
-import org.apache.maven.surefire.testset.DirectoryScannerParameters;
-import org.apache.maven.surefire.testset.RunOrderParameters;
-import org.apache.maven.surefire.testset.TestArtifactInfo;
-import org.apache.maven.surefire.testset.TestListResolver;
-import org.apache.maven.surefire.testset.TestRequest;
-import org.apache.maven.surefire.util.RunOrder;
+import org.apache.maven.surefire.api.cli.CommandLineOption;
+import org.apache.maven.surefire.api.report.ReporterConfiguration;
+import org.apache.maven.surefire.api.testset.DirectoryScannerParameters;
+import org.apache.maven.surefire.api.testset.RunOrderParameters;
+import org.apache.maven.surefire.api.testset.TestArtifactInfo;
+import org.apache.maven.surefire.api.testset.TestListResolver;
+import org.apache.maven.surefire.api.testset.TestRequest;
+import org.apache.maven.surefire.api.util.RunOrder;
 
 import java.io.File;
 import java.io.IOException;
@@ -73,6 +73,7 @@ import static org.apache.maven.surefire.booter.BooterConstants.TESTARTIFACT_CLAS
 import static org.apache.maven.surefire.booter.BooterConstants.TESTARTIFACT_VERSION;
 import static org.apache.maven.surefire.booter.BooterConstants.USEMANIFESTONLYJAR;
 import static org.apache.maven.surefire.booter.BooterConstants.USESYSTEMCLASSLOADER;
+import static org.apache.maven.surefire.booter.BooterConstants.FORK_NODE_CONNECTION_STRING;
 import static org.apache.maven.surefire.booter.SystemPropertyManager.writePropertiesFile;
 
 /**
@@ -104,11 +105,11 @@ class BooterSerializer
      */
     File serialize( KeyValueSource sourceProperties, ProviderConfiguration providerConfiguration,
                     StartupConfiguration startupConfiguration, Object testSet, boolean readTestsFromInStream,
-                    Long pid, int forkNumber )
+                    Long pid, int forkNumber, String forkNodeConnectionString )
         throws IOException
     {
         SurefireProperties properties = new SurefireProperties( sourceProperties );
-
+        properties.setNullableProperty( FORK_NODE_CONNECTION_STRING, forkNodeConnectionString );
         properties.setProperty( PLUGIN_PID, pid );
 
         AbstractPathConfiguration cp = startupConfiguration.getClasspathConfiguration();

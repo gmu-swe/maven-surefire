@@ -20,6 +20,8 @@ package org.apache.maven.surefire.booter;
  */
 
 import javax.annotation.Nonnull;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Configuration that is used by the SurefireStarter but does not make it into the provider itself.
@@ -33,21 +35,20 @@ public class StartupConfiguration
     private final String providerClassName;
     private final AbstractPathConfiguration classpathConfiguration;
     private final ClassLoaderConfiguration classLoaderConfiguration;
-    private final boolean isForkRequested;
-    private final boolean isInForkedVm;
     private final ProcessCheckerType processChecker;
+    private final List<String[]> jpmsArguments;
 
     public StartupConfiguration( @Nonnull String providerClassName,
                                  @Nonnull AbstractPathConfiguration classpathConfiguration,
-                                 @Nonnull ClassLoaderConfiguration classLoaderConfiguration, boolean isForkRequested,
-                                 boolean inForkedVm, ProcessCheckerType processChecker )
+                                 @Nonnull ClassLoaderConfiguration classLoaderConfiguration,
+                                 ProcessCheckerType processChecker,
+                                 @Nonnull List<String[]> jpmsArguments )
     {
         this.classpathConfiguration = classpathConfiguration;
         this.classLoaderConfiguration = classLoaderConfiguration;
-        this.isForkRequested = isForkRequested;
         this.providerClassName = providerClassName;
-        isInForkedVm = inForkedVm;
         this.processChecker = processChecker;
+        this.jpmsArguments = jpmsArguments;
     }
 
     public boolean isProviderMainClass()
@@ -56,24 +57,17 @@ public class StartupConfiguration
     }
 
     public static StartupConfiguration inForkedVm( String providerClassName,
-                                                   ClasspathConfiguration classpathConfiguration,
-                                                   ClassLoaderConfiguration classLoaderConfiguration,
+                                                   ClasspathConfiguration classpathConfig,
+                                                   ClassLoaderConfiguration classLoaderConfig,
                                                    ProcessCheckerType processChecker )
     {
-        return new StartupConfiguration( providerClassName, classpathConfiguration, classLoaderConfiguration, true,
-                                         true, processChecker );
+        return new StartupConfiguration( providerClassName, classpathConfig, classLoaderConfig,
+            processChecker, Collections.<String[]>emptyList() );
     }
 
     public AbstractPathConfiguration getClasspathConfiguration()
     {
         return classpathConfiguration;
-    }
-
-    @Deprecated
-    public boolean useSystemClassLoader()
-    {
-        // todo; I am not totally convinced this logic is as simple as it could be
-        return classLoaderConfiguration.isUseSystemClassLoader() && ( isInForkedVm || isForkRequested );
     }
 
     public boolean isManifestOnlyJarRequestedAndUsable()
@@ -144,5 +138,10 @@ public class StartupConfiguration
     public ProcessCheckerType getProcessChecker()
     {
         return processChecker;
+    }
+
+    public List<String[]> getJpmsArguments()
+    {
+        return jpmsArguments;
     }
 }

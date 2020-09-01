@@ -29,7 +29,8 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.extensions.ForkNodeFactory;
+import org.apache.maven.surefire.api.suite.RunResult;
 
 import static org.apache.maven.plugin.surefire.SurefireHelper.reportExecution;
 
@@ -195,10 +196,9 @@ public class SurefirePlugin
      * &nbsp;&lt;include&gt; entries.<br>
      * Since 2.19 a complex syntax is supported in one parameter (JUnit 4, JUnit 4.7+, TestNG):
      * <pre><code>
-     *
-     * </code></pre>
      * {@literal <include>}%regex[.*[Cat|Dog].*], Basic????, !Unstable*{@literal </include>}
      * {@literal <include>}%regex[.*[Cat|Dog].*], !%regex[pkg.*Slow.*.class], pkg{@literal /}**{@literal /}*Fast*.java{@literal </include>}
+     * </code></pre>
      * <br>
      * This parameter is ignored if the TestNG {@code suiteXmlFiles} parameter is specified.<br>
      * <br>
@@ -372,6 +372,21 @@ public class SurefirePlugin
      */
     @Parameter( property = "surefire.useModulePath", defaultValue = "true" )
     private boolean useModulePath;
+
+    /**
+     * This parameter configures the forked node. Currently, you can select the communication protocol, i.e. process
+     * pipes or TCP/IP sockets.
+     * The plugin uses process pipes by default which will be turned to TCP/IP in the version 3.0.0.
+     * Alternatively, you can implement your own factory and SPI.
+     * <br>
+     * See the documentation for more details:<br>
+     * <a href="https://maven.apache.org/plugins/maven-surefire-plugin/examples/process-communication.html">
+     *     https://maven.apache.org/plugins/maven-surefire-plugin/examples/process-communication.html</a>
+     *
+     * @since 3.0.0-M5
+     */
+    @Parameter( property = "surefire.forkNode" )
+    private ForkNodeFactory forkNode;
 
     /**
      * You can selectively exclude individual environment variables by enumerating their keys.
@@ -558,15 +573,15 @@ public class SurefirePlugin
     }
 
     @Override
-    public File getClassesDirectory()
+    public File getMainBuildPath()
     {
         return classesDirectory;
     }
 
     @Override
-    public void setClassesDirectory( File classesDirectory )
+    public void setMainBuildPath( File mainBuildPath )
     {
-        this.classesDirectory = classesDirectory;
+        classesDirectory = mainBuildPath;
     }
 
     @Override
@@ -857,5 +872,11 @@ public class SurefirePlugin
     protected final String getEnableProcessChecker()
     {
         return enableProcessChecker;
+    }
+
+    @Override
+    protected final ForkNodeFactory getForkNode()
+    {
+        return forkNode;
     }
 }

@@ -19,8 +19,8 @@ package org.apache.maven.plugin.surefire.booterclient.lazytestprovider;
  * under the License.
  */
 
-import org.apache.maven.surefire.booter.Command;
-import org.apache.maven.surefire.booter.Shutdown;
+import org.apache.maven.surefire.api.booter.Command;
+import org.apache.maven.surefire.api.booter.Shutdown;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -33,10 +33,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static org.apache.maven.surefire.booter.Command.BYE_ACK;
-import static org.apache.maven.surefire.booter.Command.NOOP;
-import static org.apache.maven.surefire.booter.Command.SKIP_SINCE_NEXT_TEST;
-import static org.apache.maven.surefire.booter.Command.toShutdown;
+import static org.apache.maven.surefire.api.booter.Command.BYE_ACK;
+import static org.apache.maven.surefire.api.booter.Command.NOOP;
+import static org.apache.maven.surefire.api.booter.Command.SKIP_SINCE_NEXT_TEST;
+import static org.apache.maven.surefire.api.booter.Command.toShutdown;
 
 /**
  * Dispatches commands without tests.
@@ -45,7 +45,7 @@ import static org.apache.maven.surefire.booter.Command.toShutdown;
  * @since 2.19
  */
 public final class TestLessInputStream
-    extends AbstractCommandStream
+        extends DefaultCommandReader
 {
     private final Semaphore barrier = new Semaphore( 0 );
 
@@ -108,7 +108,7 @@ public final class TestLessInputStream
     }
 
     @Override
-    protected boolean isClosed()
+    public boolean isClosed()
     {
         return closed.get();
     }
@@ -141,7 +141,6 @@ public final class TestLessInputStream
     {
         if ( closed.compareAndSet( false, true ) )
         {
-            invalidateInternalBuffer();
             barrier.drainPermits();
             barrier.release();
         }
@@ -166,8 +165,6 @@ public final class TestLessInputStream
         }
         catch ( InterruptedException e )
         {
-            // help GC to free this object because StreamFeeder Thread cannot read it anyway after IOE
-            invalidateInternalBuffer();
             throw new IOException( e.getLocalizedMessage() );
         }
     }

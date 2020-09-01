@@ -27,7 +27,8 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.surefire.suite.RunResult;
+import org.apache.maven.surefire.extensions.ForkNodeFactory;
+import org.apache.maven.surefire.api.suite.RunResult;
 
 import java.io.File;
 import java.io.IOException;
@@ -393,6 +394,21 @@ public class IntegrationTestMojo
     private boolean useModulePath;
 
     /**
+     * This parameter configures the forked node. Currently, you can select the communication protocol, i.e. process
+     * pipes or TCP/IP sockets.
+     * The plugin uses process pipes by default which will be turned to TCP/IP in the version 3.0.0.
+     * Alternatively, you can implement your own factory and SPI.
+     * <br>
+     * See the documentation for more details:<br>
+     * <a href="https://maven.apache.org/plugins/maven-surefire-plugin/examples/process-communication.html">
+     *     https://maven.apache.org/plugins/maven-surefire-plugin/examples/process-communication.html</a>
+     *
+     * @since 3.0.0-M5
+     */
+    @Parameter( property = "failsafe.forkNode" )
+    private ForkNodeFactory forkNode;
+
+    /**
      * You can selectively exclude individual environment variables by enumerating their keys.
      * <br>
      * The environment is a system-dependent mapping from keys to values which is inherited from the Maven process
@@ -606,7 +622,7 @@ public class IntegrationTestMojo
      * used instead. See the resolution of {@link #getClassLoaderConfiguration() ClassLoaderConfiguration}.
      */
     @Override
-    public File getClassesDirectory()
+    public File getMainBuildPath()
     {
         File artifact = getProject().getArtifact().getFile();
         boolean isDefaultClsDir = classesDirectory == null;
@@ -614,9 +630,9 @@ public class IntegrationTestMojo
     }
 
     @Override
-    public void setClassesDirectory( File classesDirectory )
+    public void setMainBuildPath( File mainBuildPath )
     {
-        this.classesDirectory = toAbsoluteCanonical( classesDirectory );
+        classesDirectory = toAbsoluteCanonical( mainBuildPath );
     }
 
     public void setDefaultClassesDirectory( File defaultClassesDirectory )
@@ -935,6 +951,12 @@ public class IntegrationTestMojo
     protected final boolean hasSuiteXmlFiles()
     {
         return suiteXmlFiles != null && suiteXmlFiles.length != 0;
+    }
+
+    @Override
+    protected final ForkNodeFactory getForkNode()
+    {
+        return forkNode;
     }
 
     @Override

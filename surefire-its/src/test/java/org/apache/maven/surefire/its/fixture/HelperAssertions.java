@@ -29,7 +29,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static java.lang.Double.parseDouble;
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assume.assumeTrue;
@@ -38,8 +40,13 @@ import static org.junit.Assume.assumeTrue;
  *
  */
 @SuppressWarnings( {"JavaDoc"} )
-public class HelperAssertions
+public final class HelperAssertions
 {
+    private HelperAssertions()
+    {
+        throw new IllegalStateException( "no instantiable constructor" );
+    }
+
     /**
      * assert that the reports in the specified testDir have the right summary statistics
      */
@@ -116,7 +123,7 @@ public class HelperAssertions
      */
     public static IntegrationTestSuiteResults parseReportList( List<ReportTestSuite> reports )
     {
-        assertTrue( "No reports!", !reports.isEmpty() );
+        assertFalse( "No reports!", reports.isEmpty() );
         int total = 0, errors = 0, failures = 0, skipped = 0, flakes = 0;
         for ( ReportTestSuite report : reports )
         {
@@ -174,8 +181,19 @@ public class HelperAssertions
     public static void assumeJavaVersion( double expectedVersion )
     {
         String thisVersion = System.getProperty( "java.specification.version" );
-        assumeTrue( "java.specification.version: " + thisVersion,
-                Double.parseDouble( thisVersion ) >= expectedVersion );
+        assumeTrue( "java.specification.version: " + thisVersion, parseDouble( thisVersion ) >= expectedVersion );
+    }
+
+    public static void assumeJavaMaxVersion( double expectedMaxVersion )
+    {
+        String thisVersion = System.getProperty( "java.specification.version" );
+        assumeTrue( "java.specification.version: " + thisVersion, parseDouble( thisVersion ) <= expectedMaxVersion );
+    }
+
+    public static void assumeJavaVersionExcluded( double excludedVersion )
+    {
+        String thisVersion = System.getProperty( "java.specification.version" );
+        assumeTrue( "java.specification.version: " + thisVersion, parseDouble( thisVersion ) != excludedVersion );
     }
 
     public static String convertUnicodeToUTF8( String unicode )

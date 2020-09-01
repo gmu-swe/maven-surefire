@@ -23,15 +23,15 @@ import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import org.apache.maven.surefire.providerapi.SurefireProvider;
-import org.apache.maven.surefire.report.ReporterException;
-import org.apache.maven.surefire.suite.RunResult;
-import org.apache.maven.surefire.testset.TestSetFailedException;
+import org.apache.maven.surefire.api.provider.SurefireProvider;
+import org.apache.maven.surefire.api.report.ReporterException;
+import org.apache.maven.surefire.api.suite.RunResult;
+import org.apache.maven.surefire.api.testset.TestSetFailedException;
 
-import static org.apache.maven.surefire.util.ReflectionUtils.getMethod;
-import static org.apache.maven.surefire.util.ReflectionUtils.invokeGetter;
-import static org.apache.maven.surefire.util.ReflectionUtils.invokeMethodWithArray;
-import static org.apache.maven.surefire.util.ReflectionUtils.invokeMethodWithArray2;
+import static org.apache.maven.surefire.api.util.ReflectionUtils.getMethod;
+import static org.apache.maven.surefire.api.util.ReflectionUtils.invokeGetter;
+import static org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray;
+import static org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray2;
 
 /**
  * Creates the surefire provider.
@@ -99,7 +99,8 @@ public class ProviderFactory
         final ClassLoader systemClassLoader = currentThread.getContextClassLoader();
         currentThread.setContextClassLoader( classLoader );
         // Note: Duplicated in ForkedBooter#createProviderInCurrentClassloader
-        Object o = surefireReflector.createBooterConfiguration( classLoader, reporterManagerFactory, isInsideFork );
+        Object o = surefireReflector.createBooterConfiguration( classLoader, isInsideFork );
+        surefireReflector.setReporterFactoryAware( o, reporterManagerFactory );
         surefireReflector.setTestSuiteDefinitionAware( o, providerConfiguration.getTestSuiteDefinition() );
         surefireReflector.setProviderPropertiesAware( o, providerConfiguration.getProviderProperties() );
         surefireReflector.setReporterConfigurationAware( o, providerConfiguration.getReporterConfiguration() );
@@ -109,7 +110,6 @@ public class ProviderFactory
         surefireReflector.setIfDirScannerAware( o, providerConfiguration.getDirScannerParams() );
         surefireReflector.setMainCliOptions( o, providerConfiguration.getMainCliOptions() );
         surefireReflector.setSkipAfterFailureCount( o, providerConfiguration.getSkipAfterFailureCount() );
-        surefireReflector.setShutdown( o, providerConfiguration.getShutdown() );
         if ( isInsideFork )
         {
             surefireReflector.setSystemExitTimeout( o, providerConfiguration.getSystemExitTimeout() );

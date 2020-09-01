@@ -28,10 +28,12 @@ import org.apache.maven.surefire.booter.ClassLoaderConfiguration;
 import org.apache.maven.surefire.booter.Classpath;
 import org.apache.maven.surefire.booter.ModularClasspathConfiguration;
 import org.apache.maven.surefire.booter.StartupConfiguration;
-import org.apache.maven.surefire.suite.RunResult;
-import org.apache.maven.surefire.util.DefaultScanResult;
+import org.apache.maven.surefire.extensions.ForkNodeFactory;
+import org.apache.maven.surefire.api.suite.RunResult;
+import org.apache.maven.surefire.api.util.DefaultScanResult;
 import org.codehaus.plexus.languages.java.jpms.JavaModuleDescriptor;
 import org.codehaus.plexus.languages.java.jpms.LocationManager;
+import org.codehaus.plexus.languages.java.jpms.ResolvePathResult;
 import org.codehaus.plexus.languages.java.jpms.ResolvePathsRequest;
 import org.codehaus.plexus.languages.java.jpms.ResolvePathsResult;
 import org.codehaus.plexus.languages.java.jpms.ModuleNameSource;
@@ -56,8 +58,10 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 import static org.apache.maven.artifact.versioning.VersionRange.createFromVersion;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.Index.atIndex;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -132,19 +136,20 @@ public class AbstractSurefireMojoJava7PlusTest
         ClassLoaderConfiguration classLoaderConfiguration = new ClassLoaderConfiguration( false, true );
 
         VersionRange v5 = createFromVersion( "1" );
-        Artifact provider = new DefaultArtifact( "org.apache.maven.surefire", "surefire-provider", v5, "runtime",
-                "jar", "", handler );
-        provider.setFile( mockFile( "surefire-provider.jar" ) );
-        Set<Artifact> providerClasspath = singleton( provider );
+        Artifact providerArtifact = new DefaultArtifact( "org.apache.maven.surefire", "surefire-provider",
+            v5, "runtime", "jar", "", handler );
+        providerArtifact.setFile( mockFile( "surefire-provider.jar" ) );
+        Set<Artifact> providerClasspath = singleton( providerArtifact );
 
-        File moduleInfo = mockFile( "classes/module-info.class" );
+        ResolvePathResult moduleInfo = mock( ResolvePathResult.class );
+        when( moduleInfo.getModuleDescriptor() ).thenReturn( descriptor );
 
         @SuppressWarnings( "unchecked" )
         ResolvePathsRequest<String> req = mock( ResolvePathsRequest.class );
         mockStatic( ResolvePathsRequest.class );
         when( ResolvePathsRequest.ofStrings( eq( testClasspath.toClasspath().getClassPath() ) ) ).thenReturn( req );
         when( req.setJdkHome( anyString() ) ).thenReturn( req );
-        when( req.setMainModuleDescriptor( eq( moduleInfo.getAbsolutePath() ) ) ).thenReturn( req );
+        when( req.setModuleDescriptor( eq( descriptor ) ) ).thenReturn( req );
 
         when( descriptor.name() ).thenReturn( "abc" );
 
@@ -180,25 +185,43 @@ public class AbstractSurefireMojoJava7PlusTest
                 "jar", "", handler );
         loggerApi.setFile( mockFile( "surefire-logger-api.jar" ) );
 
+        Artifact spi = new DefaultArtifact( "org.apache.maven.surefire", "surefire-extensions-spi",
+            createFromVersion( "1" ), "runtime", "jar", "", handler );
+        spi.setFile( mockFile( "surefire-extensions-spi.jar" ) );
+
+        Artifact booter = new DefaultArtifact( "org.apache.maven.surefire", "surefire-booter",
+            createFromVersion( "1" ), "runtime", "jar", "", handler );
+        booter.setFile( mockFile( "surefire-booter.jar" ) );
+
+        Artifact utils = new DefaultArtifact( "org.apache.maven.surefire", "surefire-shared-utils",
+            createFromVersion( "1" ), "runtime", "jar", "", handler );
+        utils.setFile( mockFile( "surefire-shared-utils.jar" ) );
+
         Map<String, Artifact> artifacts = new HashMap<>();
         artifacts.put( "org.apache.maven.surefire:maven-surefire-common", common );
         artifacts.put( "org.apache.maven.surefire:surefire-extensions-api", ext );
         artifacts.put( "org.apache.maven.surefire:surefire-api", api );
         artifacts.put( "org.apache.maven.surefire:surefire-logger-api", loggerApi );
+        artifacts.put( "org.apache.maven.surefire:surefire-extensions-spi", spi );
+        artifacts.put( "org.apache.maven.surefire:surefire-booter", booter );
+        artifacts.put( "org.apache.maven.surefire:surefire-shared-utils", utils );
         when( mojo.getPluginArtifactMap() ).thenReturn( artifacts );
 
+        ProviderInfo providerInfo = mock( ProviderInfo.class );
+        when( providerInfo.getProviderName() ).thenReturn( "org.asf.Provider" );
+        when( providerInfo.getProviderClasspath() ).thenReturn( providerClasspath );
+
         StartupConfiguration conf = invokeMethod( mojo, "newStartupConfigWithModularPath",
-                classLoaderConfiguration, providerClasspath, "org.asf.Provider", moduleInfo, scanResult,
-                "", testClasspath );
+            classLoaderConfiguration, providerInfo,
+            new ResolvePathResultWrapper( moduleInfo, true ), scanResult, "", testClasspath );
 
         verify( mojo, times( 1 ) ).effectiveIsEnableAssertions();
         verify( mojo, times( 1 ) ).isChildDelegation();
-        verify( mojo, times( 1 ) ).getEffectiveForkCount();
         verify( mojo, times( 1 ) ).getTestClassesDirectory();
         verify( scanResult, times( 1 ) ).getClasses();
         verifyStatic( ResolvePathsRequest.class, times( 1 ) );
         ResolvePathsRequest.ofStrings( eq( testClasspath.toClasspath().getClassPath() ) );
-        verify( req, times( 1 ) ).setMainModuleDescriptor( eq( moduleInfo.getAbsolutePath() ) );
+        verify( req, times( 1 ) ).setModuleDescriptor( eq( descriptor ) );
         verify( res, times( 1 ) ).getClasspathElements();
         verify( res, times( 1 ) ).getModulepathElements();
         verify( locationManager, times( 1 ) ).resolvePaths( eq( req ) );
@@ -219,8 +242,8 @@ public class AbstractSurefireMojoJava7PlusTest
                         "test(compact) classpath:  non-modular.jar  junit.jar  hamcrest.jar",
                         "test(compact) modulepath:  modular.jar  classes",
                         "provider(compact) classpath:  surefire-provider.jar",
-                        "in-process classpath:  surefire-provider.jar  maven-surefire-common.jar  surefire-extensions-api.jar  surefire-api.jar  surefire-logger-api.jar",
-                        "in-process(compact) classpath:  surefire-provider.jar  maven-surefire-common.jar  surefire-extensions-api.jar  surefire-api.jar  surefire-logger-api.jar"
+                        "in-process classpath:  surefire-provider.jar  maven-surefire-common.jar  surefire-booter.jar  surefire-extensions-api.jar  surefire-api.jar  surefire-extensions-spi.jar  surefire-logger-api.jar  surefire-shared-utils.jar",
+                        "in-process(compact) classpath:  surefire-provider.jar  maven-surefire-common.jar  surefire-booter.jar  surefire-extensions-api.jar  surefire-api.jar  surefire-extensions-spi.jar  surefire-logger-api.jar  surefire-shared-utils.jar"
                 );
 
         assertThat( conf ).isNotNull();
@@ -245,6 +268,204 @@ public class AbstractSurefireMojoJava7PlusTest
                 .containsExactly( "modular.jar", "classes" );
     }
 
+    @Test
+    @SuppressWarnings( "checkstyle:linelength" )
+    public void shouldHaveStartupConfigForModularClasspathAndTestDescriptor()
+        throws Exception
+    {
+        AbstractSurefireMojo mojo = spy( new Mojo() );
+        doReturn( locationManager )
+            .when( mojo, "getLocationManager" );
+
+        when( handler.isAddedToClasspath() ).thenReturn( true );
+
+        VersionRange v1 = createFromVersion( "1" );
+        Artifact modular = new DefaultArtifact( "x", "modular", v1, "compile", "jar", "", handler );
+        modular.setFile( mockFile( "modular.jar" ) );
+
+        VersionRange v2 = createFromVersion( "1" );
+        Artifact nonModular = new DefaultArtifact( "x", "non-modular", v2, "test", "jar", "", handler );
+        nonModular.setFile( mockFile( "non-modular.jar" ) );
+
+        VersionRange v3 = createFromVersion( "4.12" );
+        Artifact junit = new DefaultArtifact( "junit", "junit", v3, "test", "jar", "", handler );
+        junit.setFile( mockFile( "junit.jar" ) );
+
+        VersionRange v4 = createFromVersion( "1.3.0" );
+        Artifact hamcrest = new DefaultArtifact( "org.hamcrest", "hamcrest-core", v4, "test", "jar", "", handler );
+        hamcrest.setFile( mockFile( "hamcrest.jar" ) );
+
+        File classesDir = mockFile( "classes" );
+        File testClassesDir = mockFile( "test-classes" );
+
+        TestClassPath testClasspath =
+            new TestClassPath( asList( modular, nonModular, junit, hamcrest ), classesDir, testClassesDir,
+                null );
+
+        doReturn( testClasspath ).when( mojo, "generateTestClasspath" );
+        doReturn( 1 ).when( mojo, "getEffectiveForkCount" );
+        doReturn( true ).when( mojo, "effectiveIsEnableAssertions" );
+        when( mojo.isChildDelegation() ).thenReturn( false );
+        when( mojo.getTestClassesDirectory() ).thenReturn( testClassesDir );
+
+        DefaultScanResult scanResult = mock( DefaultScanResult.class );
+        when( scanResult.getClasses() ).thenReturn( asList( "org.apache.A", "org.apache.B" ) );
+
+        ClassLoaderConfiguration classLoaderConfiguration = new ClassLoaderConfiguration( false, true );
+
+        VersionRange v5 = createFromVersion( "1" );
+        Artifact providerArtifact = new DefaultArtifact( "org.apache.maven.surefire", "surefire-provider",
+            v5, "runtime", "jar", "", handler );
+        providerArtifact.setFile( mockFile( "surefire-provider.jar" ) );
+        Set<Artifact> providerClasspath = singleton( providerArtifact );
+
+        ResolvePathResult moduleInfo = mock( ResolvePathResult.class );
+        when( moduleInfo.getModuleDescriptor() ).thenReturn( descriptor );
+
+        when( descriptor.name() ).thenReturn( "abc" );
+
+        Logger logger = mock( Logger.class );
+        when( logger.isDebugEnabled() ).thenReturn( true );
+        doNothing().when( logger ).debug( anyString() );
+        when( mojo.getConsoleLogger() ).thenReturn( new PluginConsoleLogger( logger ) );
+
+        Artifact common = new DefaultArtifact( "org.apache.maven.surefire", "maven-surefire-common", v5, "runtime",
+            "jar", "", handler );
+        common.setFile( mockFile( "maven-surefire-common.jar" ) );
+
+        Artifact ext = new DefaultArtifact( "org.apache.maven.surefire", "surefire-extensions-api", v5, "runtime",
+            "jar", "", handler );
+        ext.setFile( mockFile( "surefire-extensions-api.jar" ) );
+
+        Artifact api = new DefaultArtifact( "org.apache.maven.surefire", "surefire-api", v5, "runtime",
+            "jar", "", handler );
+        api.setFile( mockFile( "surefire-api.jar" ) );
+
+        Artifact loggerApi = new DefaultArtifact( "org.apache.maven.surefire", "surefire-logger-api", v5, "runtime",
+            "jar", "", handler );
+        loggerApi.setFile( mockFile( "surefire-logger-api.jar" ) );
+
+        Artifact spi = new DefaultArtifact( "org.apache.maven.surefire", "surefire-extensions-spi",
+            createFromVersion( "1" ), "runtime", "jar", "", handler );
+        spi.setFile( mockFile( "surefire-extensions-spi.jar" ) );
+
+        Artifact booter = new DefaultArtifact( "org.apache.maven.surefire", "surefire-booter",
+            createFromVersion( "1" ), "runtime", "jar", "", handler );
+        booter.setFile( mockFile( "surefire-booter.jar" ) );
+
+        Artifact utils = new DefaultArtifact( "org.apache.maven.surefire", "surefire-shared-utils",
+            createFromVersion( "1" ), "runtime", "jar", "", handler );
+        utils.setFile( mockFile( "surefire-shared-utils.jar" ) );
+
+        Map<String, Artifact> artifacts = new HashMap<>();
+        artifacts.put( "org.apache.maven.surefire:maven-surefire-common", common );
+        artifacts.put( "org.apache.maven.surefire:surefire-extensions-api", ext );
+        artifacts.put( "org.apache.maven.surefire:surefire-api", api );
+        artifacts.put( "org.apache.maven.surefire:surefire-logger-api", loggerApi );
+        artifacts.put( "org.apache.maven.surefire:surefire-extensions-spi", spi );
+        artifacts.put( "org.apache.maven.surefire:surefire-booter", booter );
+        artifacts.put( "org.apache.maven.surefire:surefire-shared-utils", utils );
+        when( mojo.getPluginArtifactMap() ).thenReturn( artifacts );
+
+        ProviderInfo providerInfo = mock( ProviderInfo.class );
+        when( providerInfo.getProviderName() ).thenReturn( "org.asf.Provider" );
+        when( providerInfo.getProviderClasspath() ).thenReturn( providerClasspath );
+
+        StartupConfiguration conf = invokeMethod( mojo, "newStartupConfigWithModularPath",
+            classLoaderConfiguration, providerInfo,
+            new ResolvePathResultWrapper( moduleInfo, false ), scanResult, "", testClasspath );
+
+        verify( mojo, times( 1 ) ).effectiveIsEnableAssertions();
+        verify( mojo, times( 1 ) ).isChildDelegation();
+        verify( mojo, never() ).getTestClassesDirectory();
+        ArgumentCaptor<String> argument = ArgumentCaptor.forClass( String.class );
+        verify( logger, times( 9 ) ).debug( argument.capture() );
+        assertThat( argument.getAllValues() )
+            .containsExactly( "main module descriptor name: abc",
+                "test classpath:",
+                "test modulepath:  test-classes  classes  modular.jar  non-modular.jar  junit.jar  hamcrest.jar",
+                "provider classpath:  surefire-provider.jar",
+                "test(compact) classpath:",
+                "test(compact) modulepath:  test-classes  classes  modular.jar  non-modular.jar  junit.jar  hamcrest.jar",
+                "provider(compact) classpath:  surefire-provider.jar",
+                "in-process classpath:  surefire-provider.jar  maven-surefire-common.jar  surefire-booter.jar  surefire-extensions-api.jar  surefire-api.jar  surefire-extensions-spi.jar  surefire-logger-api.jar  surefire-shared-utils.jar",
+                "in-process(compact) classpath:  surefire-provider.jar  maven-surefire-common.jar  surefire-booter.jar  surefire-extensions-api.jar  surefire-api.jar  surefire-extensions-spi.jar  surefire-logger-api.jar  surefire-shared-utils.jar"
+            );
+
+        assertThat( conf ).isNotNull();
+        assertThat( conf.isShadefire() ).isFalse();
+        assertThat( conf.isProviderMainClass() ).isFalse();
+        assertThat( conf.isManifestOnlyJarRequestedAndUsable() ).isFalse();
+        assertThat( conf.getClassLoaderConfiguration() ).isSameAs( classLoaderConfiguration );
+        assertThat( conf.getProviderClassName() ).isEqualTo( "org.asf.Provider" );
+        assertThat( conf.getActualClassName() ).isEqualTo( "org.asf.Provider" );
+        assertThat( conf.getClasspathConfiguration() ).isNotNull();
+        assertThat( ( Object ) conf.getClasspathConfiguration().getTestClasspath() )
+            .isEqualTo( Classpath.emptyClasspath() );
+        assertThat( ( Object ) conf.getClasspathConfiguration().getProviderClasspath() )
+            .isEqualTo( new Classpath( singleton( "surefire-provider.jar" ) ) );
+        assertThat( conf.getClasspathConfiguration() ).isInstanceOf( ModularClasspathConfiguration.class );
+        ModularClasspathConfiguration mcc = ( ModularClasspathConfiguration ) conf.getClasspathConfiguration();
+        assertThat( mcc.getModularClasspath().getModuleNameFromDescriptor() ).isEqualTo( "abc" );
+        assertThat( mcc.getModularClasspath().getPackages() ).isEmpty();
+        assertThat( mcc.getModularClasspath().getPatchFile() )
+            .isNull();
+        assertThat( mcc.getModularClasspath().getModulePath() )
+            .hasSize( 6 )
+            .containsSequence( "test-classes", "classes", "modular.jar", "non-modular.jar",
+                "junit.jar", "hamcrest.jar" );
+    }
+
+    @Test
+    public void testAllProviderInfo()
+    {
+        Mojo mojo = new Mojo();
+
+        ProviderRequirements providerRequirements = new ProviderRequirements( true, false, true );
+
+        ProviderInfo providerInfo = mojo.newDynamicProviderInfo();
+        assertThat( providerInfo.getProviderName() )
+            .isEqualTo( "custom.Provider" );
+        assertThat( providerInfo.getJpmsArguments( providerRequirements ) )
+            .isEmpty();
+
+        providerInfo = mojo.newJUnit3ProviderInfo();
+        assertThat( providerInfo.getProviderName() )
+            .isEqualTo( "org.apache.maven.surefire.junit.JUnit3Provider" );
+        assertThat( providerInfo.getJpmsArguments( providerRequirements ) )
+            .isEmpty();
+
+        providerInfo = mojo.newJUnit4ProviderInfo();
+        assertThat( providerInfo.getProviderName() )
+            .isEqualTo( "org.apache.maven.surefire.junit4.JUnit4Provider" );
+        assertThat( providerInfo.getJpmsArguments( providerRequirements ) )
+            .isEmpty();
+
+        providerInfo = mojo.newJUnit47ProviderInfo();
+        assertThat( providerInfo.getProviderName() )
+            .isEqualTo( "org.apache.maven.surefire.junitcore.JUnitCoreProvider" );
+        assertThat( providerInfo.getJpmsArguments( providerRequirements ) )
+            .isEmpty();
+
+        providerInfo = mojo.newTestNgProviderInfo();
+        assertThat( providerInfo.getProviderName() )
+            .isEqualTo( "org.apache.maven.surefire.testng.TestNGProvider" );
+        assertThat( providerInfo.getJpmsArguments( providerRequirements ) )
+            .isEmpty();
+
+        providerInfo = mojo.newJUnitPlatformProviderInfo();
+        assertThat( providerInfo.getProviderName() )
+            .isEqualTo( "org.apache.maven.surefire.junitplatform.JUnitPlatformProvider" );
+        List<String[]> args = providerInfo.getJpmsArguments( providerRequirements );
+        assertThat( args )
+            .isNotEmpty()
+            .hasSize( 2 )
+            .contains( new String[] {
+            "--add-opens", "org.junit.platform.commons/org.junit.platform.commons.util=ALL-UNNAMED"}, atIndex( 0 ) )
+            .contains( new String[] {
+            "--add-opens", "org.junit.platform.commons/org.junit.platform.commons.logging=ALL-UNNAMED"}, atIndex( 1 ) );
+    }
+
     private static File mockFile( String absolutePath )
     {
         File f = mock( File.class );
@@ -258,6 +479,35 @@ public class AbstractSurefireMojoJava7PlusTest
     public static class Mojo
             extends AbstractSurefireMojo
     {
+        ProviderInfo newDynamicProviderInfo()
+        {
+            return new DynamicProviderInfo( "custom.Provider" );
+        }
+
+        ProviderInfo newJUnit3ProviderInfo()
+        {
+            return new JUnit3ProviderInfo();
+        }
+
+        ProviderInfo newJUnit4ProviderInfo()
+        {
+            return new JUnit4ProviderInfo( null, null );
+        }
+
+        ProviderInfo newJUnit47ProviderInfo()
+        {
+            return new JUnitCoreProviderInfo( null, null );
+        }
+
+        ProviderInfo newTestNgProviderInfo()
+        {
+            return new TestNgProviderInfo( null );
+        }
+
+        ProviderInfo newJUnitPlatformProviderInfo()
+        {
+            return new JUnitPlatformProviderInfo( null, null );
+        }
 
         @Override
         protected String getPluginName()
@@ -332,13 +582,13 @@ public class AbstractSurefireMojoJava7PlusTest
         }
 
         @Override
-        public File getClassesDirectory()
+        public File getMainBuildPath()
         {
             return null;
         }
 
         @Override
-        public void setClassesDirectory( File classesDirectory )
+        public void setMainBuildPath( File mainBuildPath )
         {
 
         }
@@ -645,6 +895,12 @@ public class AbstractSurefireMojoJava7PlusTest
 
         @Override
         protected String getEnableProcessChecker()
+        {
+            return null;
+        }
+
+        @Override
+        protected ForkNodeFactory getForkNode()
         {
             return null;
         }

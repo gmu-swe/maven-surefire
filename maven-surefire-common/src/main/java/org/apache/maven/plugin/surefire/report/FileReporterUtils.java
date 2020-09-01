@@ -35,18 +35,26 @@ public final class FileReporterUtils
 
     public static String stripIllegalFilenameChars( String original )
     {
-        String result = original;
+        StringBuilder result = new StringBuilder( original );
         String illegalChars = getOSSpecificIllegalChars();
-        for ( int i = 0; i < illegalChars.length(); i++ )
+        for ( int i = 0, len = result.length(); i < len; i++ )
         {
-            result = result.replace( illegalChars.charAt( i ), '_' );
+            char charFromOriginal = result.charAt( i );
+            boolean isIllegalChar = illegalChars.indexOf( charFromOriginal ) != -1;
+            if ( isIllegalChar )
+            {
+                result.setCharAt( i, '_' );
+            }
         }
-
-        return result;
+        return result.toString();
     }
 
     private static String getOSSpecificIllegalChars()
     {
-        return IS_OS_WINDOWS ? "\\/:*?\"<>|\0" : "/\0";
+        // forbidden and quoted characters
+        // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+        // https://cygwin.com/cygwin-ug-net/using-specialnames.html
+        // https://www.cyberciti.biz/faq/linuxunix-rules-for-naming-file-and-directory-names/
+        return IS_OS_WINDOWS ? "[],\\/:*?\"<>|\0" : "()&\\/:*?\"<>|\0";
     }
 }

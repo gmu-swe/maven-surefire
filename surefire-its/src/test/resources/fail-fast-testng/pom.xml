@@ -51,9 +51,27 @@
         <configuration>
           <runOrder>alphabetical</runOrder>
           <forkMode>once</forkMode><!--override to default value in order to enable forkCount-->
+            <argLine>-Xms64m -Xmx128m</argLine>
         </configuration>
       </plugin>
     </plugins>
   </build>
+
+    <profiles>
+        <profile>
+            <id>tcp</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <forkNode implementation="org.apache.maven.plugin.surefire.extensions.SurefireForkNodeFactory"/>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

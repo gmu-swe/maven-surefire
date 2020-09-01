@@ -27,6 +27,7 @@ import org.apache.maven.surefire.booter.ForkedBooter;
 import org.apache.maven.surefire.booter.ModularClasspath;
 import org.apache.maven.surefire.booter.ModularClasspathConfiguration;
 import org.apache.maven.surefire.booter.StartupConfiguration;
+import org.apache.maven.surefire.extensions.ForkNodeFactory;
 import org.junit.Test;
 
 import java.io.File;
@@ -43,9 +44,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllLines;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static org.apache.maven.surefire.shared.utils.StringUtils.replace;
 import static org.apache.maven.surefire.booter.Classpath.emptyClasspath;
+import static org.apache.maven.surefire.shared.utils.StringUtils.replace;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author <a href="mailto:tibordigana@apache.org">Tibor Digana (tibor17)</a>
@@ -66,7 +68,7 @@ public class ModularClasspathForkConfigurationTest
         ModularClasspathForkConfiguration config = new ModularClasspathForkConfiguration( booter, tmp, "", pwd,
                 new Properties(), "",
                 Collections.<String, String>emptyMap(), new String[0], true, 1, true,
-                new Platform(), new NullConsoleLogger() );
+                new Platform(), new NullConsoleLogger(), mock( ForkNodeFactory.class ) );
 
         File patchFile = new File( "target" + separatorChar + "test-classes" );
         File descriptor = new File( tmp, "module-info.class" );
@@ -77,8 +79,8 @@ public class ModularClasspathForkConfigurationTest
         Collection<String> packages = singleton( "org.apache.abc" );
         String startClassName = ForkedBooter.class.getName();
 
-        File jigsawArgsFile =
-                config.createArgsFile( "abc", modulePath, classPath, packages, patchFile, startClassName );
+        File jigsawArgsFile = config.createArgsFile( "abc", modulePath, classPath, packages, patchFile,
+            startClassName, true, Collections.<String[]>emptyList() );
 
         assertThat( jigsawArgsFile )
                 .isNotNull();
@@ -134,15 +136,15 @@ public class ModularClasspathForkConfigurationTest
         assertThat( argsFileLines.get( 12 ) )
                 .isEqualTo( ForkedBooter.class.getName() );
 
-        ModularClasspath modularClasspath = new ModularClasspath( "abc", modulePath, packages, patchFile );
+        ModularClasspath modularClasspath = new ModularClasspath( "abc", modulePath, packages, patchFile, true );
         Classpath testClasspathUrls = new Classpath( singleton( "target" + separator + "test-classes" ) );
         Classpath surefireClasspathUrls = Classpath.emptyClasspath();
         ModularClasspathConfiguration modularClasspathConfiguration =
                 new ModularClasspathConfiguration( modularClasspath, testClasspathUrls, surefireClasspathUrls,
                         emptyClasspath(), true, true );
         ClassLoaderConfiguration clc = new ClassLoaderConfiguration( true, true );
-        StartupConfiguration startupConfiguration =
-                new StartupConfiguration( "JUnitCoreProvider", modularClasspathConfiguration, clc, true, true, null );
+        StartupConfiguration startupConfiguration = new StartupConfiguration( "JUnitCoreProvider",
+            modularClasspathConfiguration, clc, null, Collections.<String[]>emptyList() );
         OutputStreamFlushableCommandline cli = new OutputStreamFlushableCommandline();
         config.resolveClasspath( cli, ForkedBooter.class.getName(), startupConfiguration,
                 createTempFile( "surefire", "surefire-reports" ) );
